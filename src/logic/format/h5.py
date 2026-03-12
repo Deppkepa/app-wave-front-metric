@@ -1,34 +1,21 @@
-# чтение файлов формата h5
+# Главная задача чтение данных из файлов формата h5
 import h5py 
 import matplotlib.pyplot as plt
 from src.logic.model.model_image import model_image
+from pathlib import Path
 
 class h5():
-    # __path_file: str = ""
+    # TODO: Сделать класс валидатор который будет проверять правильность записи типов и т.д.
 
-    # @property
-    # def path_file(self) -> str:
-    #     return self.__path_file
-    
-
-    # # TODO: Сделать класс валидатор который будет проверять правильность записи типов и т.д.
-    # @path_file.setter
-    # def path_file(self, path: str):
-    #     self.__path_file = path
-
-    def open_file(path_file: str):
+    def open_file(name_file: str):
+        abs_path = Path(name_file).resolve()
+        path_file = abs_path if abs_path.is_file() else abs_path.parent.joinpath('data', name_file)
         with h5py.File(path_file, 'r') as f:
             # FIXME: исправить прямое обращение к ключу
-            
             data = f['data'][:]
-            
-            
-            image_count = data.shape[0]
-            frame_size = data.shape[1:]
             # ⁡⁣⁢⁢IDEA⁡: Сделать выводом функции массив с данными из файла
-
-            # return f"Количество изображений в файле: {image_count}. \nРазмер субапертур: {frame_size}"
             return data
+            # FIXME: закрыть файл
             # TODO: записать размер изображений в модель
 
             # TODO: функция которая на вход берет изображение разбивает на субапертуры 

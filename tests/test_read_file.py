@@ -1,11 +1,8 @@
 import unittest
-from src.logic.manager import manager
+from logic.manager import manager
 import matplotlib.pyplot as plt
-import cv2
-from PIL import Image
-import numpy as np
-from skimage.filters import threshold_otsu
-from src.logic.Image_processing import image_processing
+from src.logic.format.h5 import h5
+from src.logic.model.model_subaperture import model_subaperture
 
 class TestJobFile(unittest.TestCase):
     __test_manager = manager
@@ -14,16 +11,18 @@ class TestJobFile(unittest.TestCase):
         # TODO: Провести проверки на неправильный путь в функцию
         # TODO: Реализовать отдельный файл с обработчиком ошибок и Log
         name_file = "data\sunspot1300.h5"   
-        result = self.__test_manager.read_file(name_file)
+        result = h5.open_file(name_file)
         assert len(result.shape) != 0
 
     #  INFO: тест направлен на проверку разбивки изображения на субапертур
     def test_image_in_subaperture(self):
         name_file = "data\sunspot1300.h5"
-        images = self.__test_manager.read_file(name_file)
-        result = self.__test_manager.image_in_subaperture(images)
-        # result = image_processing.split_image(result)
+        images = self.__test_manager.process_date(name_file)
+        assert len(images) == 6400
+        assert len(images[0].subapertures) != None
+        assert type(images[0].subapertures[0]) == model_subaperture
         
+    # FIXME: написать побольше тестов которые протестируют функционал   
 
 if __name__ == "__main__": 
     unittest.main() 

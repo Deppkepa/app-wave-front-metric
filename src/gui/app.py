@@ -4,60 +4,82 @@ from src.gui.Menu_bar_horizontal import menu_bar_horizontal
 from src.controller.manager import manager
 from src.gui.grid_subaperture import GridSubapertureView
 from src.logic.model.model_image import model_image
+from PyQt5.QtCore import Qt
 
 #  Главное окно.
 
 class app_w_f_metric(QMainWindow):
-    __manager_logic:manager = manager
+    # __manager_logic:manager = manager()
     __path_file:str = ""
+    
+
+    # FIXME: Сделать setap and propertu для менеджера
 
     @property
     def path_file(self) -> str:
         return self.__path_file
 
     @path_file.setter
-    def image(self, path: str):
+    def path_file(self, path: str):
         self.__path_file = path
 
     def __init__(self):
         super().__init__()
+        self.__manager = manager()
+        self.__first_tab = QWidget()
         self.initUI()
 
     def initUI(self):
-        lbl = QLabel('Hello World!', self)
-        lbl.move(50, 50)  # Перемещаем лейбл на позицию (50, 50)
+        tabs = QTabWidget()
+        self.setCentralWidget(tabs)
+
+        # Первая вкладка для сетки
+        
+        first_vbox = QVBoxLayout(self.__first_tab)
+        tabs.addTab(self.__first_tab, "Изображение")
+
+        # Вторая вкладка с надписью "Привет, мир!"
+        second_tab = QWidget()
+        second_vbox = QVBoxLayout(second_tab)
+        hello_world_label = QLabel("Привет, мир!")
+        second_vbox.addWidget(hello_world_label)
+        tabs.addTab(second_tab, "Сообщение")
+
+        # Меню с кнопкой "Открыть файл"
         menubar = self.menuBar()
-        menu_bar_horizontal().setup_menu(menubar, self)
+        menu_bar = menu_bar_horizontal()
+        menu_bar.setup_menu(menubar, self)
+
         
 
-        # Создаём виджет с грид-сеткой
-        # grid_widget = GridSubapertureView.create_grid(subapertures, rows=2, columns=2)
+        # Размер окна и заголовок
+        self.setGeometry(300, 300, 1000, 800)
+        self.setWindowTitle('Метрика волнового фронта')
 
-        # # Ставим виджет в центральное пространство окна
-        # self.setCentralWidget(grid_widget)
 
-        # FIXME: Автоматизировать задаваемые параметры окна
-        self.setGeometry(250, 200, 1366, 768)  # Левый верхний угол, ширина, высота
-        self.setWindowTitle('Metric wave-front')
+        # # FIXME: Автоматизировать задаваемые параметры окна
+        
     
     def new_file(self):
         print("Создали новый файл!")
 
     def open_file(self):
-        # Диалог выбора файла
         options = QFileDialog.Options()
-        filename, _ = QFileDialog.getOpenFileName(self, "Выбрать файл", "", "All Files (*)", options=options)
+        filename, _ = QFileDialog.getOpenFileName(self, "Выберите файл", "", "Все файлы (*);;", options=options)
         if filename:
-            self.__path_file = filename
-            print(f"Выбран файл: {self.__path_file}")
-
-            # Обращаемся к менеджеру для обработки данных
-            processed_models = self.__manager_logic.process_date(filename)
-            print(processed_models[0].row_col)
-            grid_widget = GridSubapertureView.create_view(processed_models[0].subapertures, (500, 500))
-            # print(processed_models[0])
-            self.takeCentralWidget()
-            self.setCentralWidget(grid_widget)
+            processed_models = self.__manager.process_date(filename)
+            if processed_models:
+                # Удаляем старые элементы с первой вкладки
+                while self.__first_tab.layout().count():
+                    child = self.__first_tab.layout().takeAt(0)
+                    if child.widget():
+                        child.widget().deleteLater()
+                
+                # Создаем новую сетку
+                print(type(processed_models))
+                grid_widget = GridSubapertureView.create_view(processed_models, (0, 0))
+                # grid_widget = GridSubapertureView.range_images()
+                self.__first_tab.layout().addWidget(grid_widget)
             
             
             

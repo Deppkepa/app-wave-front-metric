@@ -22,7 +22,6 @@ class image_processing:
             for i in result_subaperture:    
                 collecting_model_sub.append(model_subaperture().create(i['sequence_num'], i['subaperture'], i['schematic_contour']))
             collecting_model_img.append(model_image().create(image, collecting_model_sub, index_table))
-            break
         return collecting_model_img
 
 

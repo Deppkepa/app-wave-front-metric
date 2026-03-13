@@ -13,7 +13,14 @@ class menu_bar_horizontal():
         # меню файл
         file_menu = menubar.addMenu('Файл')
         self.setup_option_new(file_menu, parent)
-        self.setup_option_open(file_menu, parent)
+        
+        
+        # Действие "Открыть файл"
+        open_action = QAction('Открыть', parent)
+        open_action.triggered.connect(parent.open_file)  # Подключаем обработчик события
+        file_menu.addAction(open_action) 
+
+
         self.setup_option_save(file_menu, parent)
         self.setup_option_save_as(file_menu, parent)
         self.setup_option_close(file_menu, parent)
@@ -32,10 +39,7 @@ class menu_bar_horizontal():
         
 
     def setup_option_open(self, file_menu, parent):
-        # Действие "Открыть файл"
-        open_action = QAction('Открыть', parent)
-        open_action.triggered.connect(parent.open_file)  # Подключаем обработчик события
-        file_menu.addAction(open_action)  
+        pass 
 
     def setup_option_save(self, file_menu, parent):
         # Действие "Сохранить файл"

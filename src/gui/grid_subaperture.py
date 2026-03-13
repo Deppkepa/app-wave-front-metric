@@ -1,58 +1,57 @@
 # src/gui/GridSubapertureView.py
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsView, QGraphicsPixmapItem, QMainWindow
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsView, QGraphicsPixmapItem, QWidget, QSlider, QStackedWidget, QVBoxLayout
 from PyQt5.QtGui import QPixmap, QImage
 import numpy as np
+from PyQt5.QtCore import Qt
 
-class GridSubapertureView(QMainWindow):
 
-    # Статический метод для создания сцены с восстановленным изображением
+class GridSubapertureView(QWidget):
+
+
     @staticmethod
-    def create_view(subapertures, scene_size):
-        # Создаем сцену и виджет просмотра
-        scene = QGraphicsScene()
+    def range_images(images):
+        pass
         
-        view = QGraphicsView(scene)
-        # view.setStyleSheet("background-color: red;")
-        
-        # Загружаем и располагаем фрагменты на сцене
-        for subaperture in subapertures:
-            # Получаем координаты и размеры из модели
-            x, y, w, h = subaperture.schematic_contour
-            
-            # Преобразуем массив NumPy в QPixmap
-            pixmap = GridSubapertureView.nparray_to_pixmap(subaperture.subaperture)
-            
-            # Создаем графический элемент для фрагмента
-            fragment_item = QGraphicsPixmapItem(pixmap)
-            
-            # Устанавливаем позицию фрагмента на сцене
-            fragment_item.setPos(x, y)
-            
-            # Добавляем элемент на сцену
-            scene.addItem(fragment_item)
-        
-        # Настраиваем размеры сцены
-        scene.setSceneRect(0, 0, scene_size[0], scene_size[1])
-        
-        # Создаем окно для отображения
-        window = QMainWindow()
-        window.setCentralWidget(view)
-        window.setWindowTitle("Восстановленное изображение")
-        window.resize(scene_size[0], scene_size[1])
-        
-        return window
-
-    # Вспомогательная функция для преобразования NumPy в QPixmap
     @staticmethod
-    def nparray_to_pixmap(arr):
-        """
-        Преобразует NumPy array в QPixmap.
-        """
-        # Получаем высоту и ширину изображения
+    def create_view(images, scene_size):
+        scenes = []
+        for image in images:
+            scene = QGraphicsScene()
+            for subaperture in image.subapertures:
+                x, y, _, _ = subaperture.schematic_contour
+                pixmap = GridSubapertureView.ndarray_to_pixmap(subaperture.subaperture)
+                fragment_item = QGraphicsPixmapItem(pixmap)
+                fragment_item.setPos(x, y)
+                scene.addItem(fragment_item)
+            scenes.append(scene)
+        
+        # Создаем контейнер для стека и ползунка
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        
+        # Виджет для переключения сцен
+        stacked_widget = QStackedWidget()
+        for scene in scenes:
+            view = QGraphicsView(scene)
+            stacked_widget.addWidget(view)
+        
+        # Ползунок для переключения между сценами
+        slider = QSlider(Qt.Horizontal)
+        slider.setRange(0, len(scenes) - 1)
+        slider.valueChanged.connect(stacked_widget.setCurrentIndex)
+        
+        # Объединяем в одном макете
+        layout.addWidget(stacked_widget)
+        layout.addWidget(slider)
+        
+        return container
+    
+
+    @staticmethod
+    def ndarray_to_pixmap(arr):
+        
         height, width = arr.shape[:2]
-        
-        # Определяем формат изображения
-        if arr.ndim == 2:  # Монохромное (чёрно-белое) изображение
+        if arr.ndim == 2:
             format_qimage = QImage.Format_Grayscale8
             byte_count = width * arr.itemsize
         elif arr.ndim == 3 and arr.shape[-1] == 3:  # RGB изображение
@@ -63,12 +62,6 @@ class GridSubapertureView(QMainWindow):
             byte_count = width * arr.itemsize * 4
         else:
             raise ValueError("Неподдерживаемый формат изображения.")
-
-        # Получаем сырые байты изображения
         raw_bytes = arr.tobytes()
-
-        # Создаем QImage из сырых байтов
         qimg = QImage(raw_bytes, width, height, byte_count, format_qimage)
-
-        # Возвращаем QPixmap, созданный из QImage
         return QPixmap.fromImage(qimg)

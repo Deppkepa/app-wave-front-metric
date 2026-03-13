@@ -11,5 +11,11 @@
         "./Tests",
         "-p",
         "test_*.py"
+    ],
+    "cSpell.words": [
+        "itemsize",
+        "Pixmap",
+        "qimg",
+        "tobytes"
     ]
 }

@@ -10,7 +10,7 @@ class manager():
 
     # INFO: Output: Готовые модели, Input: имя файла
     # INFO: Активизация преобразования данных из файла в модели
-    def process_date(name_file:str):
+    def process_date(self, name_file:str):
         return image_processing.start(name_file)
     
     

@@ -4,7 +4,7 @@ import numpy as np
 class model_subaperture():
     __num_grid: int = 0 # номер субапертуры в сетке на изображении
     __subaperture: np.ndarray = None # массив субапертуры
-    __schematic_contour: tuple = ()
+    __schematic_contour: tuple = () # (x, y, width, height)
     
     # __size: tuple = () # размеры субапертуры
     # __selected_analysis: bool = False # флаг что пользователь выбрал эту субапертуру для анализа

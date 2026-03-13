@@ -1,5 +1,5 @@
 import unittest
-from logic.manager import manager
+from src.controller.manager import manager
 import matplotlib.pyplot as plt
 from src.logic.format.h5 import h5
 from src.logic.model.model_subaperture import model_subaperture
@@ -22,7 +22,10 @@ class TestJobFile(unittest.TestCase):
         assert len(images[0].subapertures) != None
         assert type(images[0].subapertures[0]) == model_subaperture
         
-    # FIXME: написать побольше тестов которые протестируют функционал   
+    # FIXME: написать побольше тестов которые протестируют функционал 
+    # 
+    def test_grid(self):
+        pass  
 
 if __name__ == "__main__": 
     unittest.main() 

@@ -2,7 +2,7 @@
 from src.logic.model.model_subaperture import model_subaperture
 import numpy as np
 
-from src.logic.unique_entity import unique_entity
+from src.logic.model.unique_entity import unique_entity
 
 
 class model_image(unique_entity):

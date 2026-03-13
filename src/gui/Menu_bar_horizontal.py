@@ -2,8 +2,6 @@
 from PyQt5.QtWidgets import *
 
 class menu_bar_horizontal():
-    
-    __path_file:str = ""
 
     # def create(self):
     #     menubar = self.menuBar()
@@ -60,7 +58,7 @@ class menu_bar_horizontal():
     def setup_option_exit(self, file_menu, parent):
         # Действие "Выход"
         open_action = QAction('Выход', parent)
-        open_action.triggered.connect(parent.close)  # Подключаем обработчик события
+        open_action.triggered.connect(parent.exit_file)  # Подключаем обработчик события
         file_menu.addAction(open_action) 
 
     def setup_option_copy(self, edit_menu, parent):

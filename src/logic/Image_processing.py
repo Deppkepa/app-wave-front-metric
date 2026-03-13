@@ -22,6 +22,7 @@ class image_processing:
             for i in result_subaperture:    
                 collecting_model_sub.append(model_subaperture().create(i['sequence_num'], i['subaperture'], i['schematic_contour']))
             collecting_model_img.append(model_image().create(image, collecting_model_sub, index_table))
+            break
         return collecting_model_img
 
 
@@ -58,15 +59,21 @@ class image_processing:
         count_col = 1
         memory = 0
         step = 0
+        # count_element = []
         # Присваиваем уникальные номера в порядке сортировки
         for index, subaperture in enumerate(sorted_subapertures, start=1):
             subaperture['sequence_num'] = index
+            # print(subaperture['schematic_contour'])
             if subaperture['schematic_contour'][1] - subaperture['schematic_contour'][1] < 5:
                 step += 1
                 if subaperture['schematic_contour'][1] != memory and subaperture['schematic_contour'][1] - memory > 5:
                     memory = subaperture['schematic_contour'][1]
+                    # count_element.append(step - 1)
                     count_col += 1
+
+                    # print(count_col, step)
                     if step > count_row:
                         count_row = step
                     step = 0
+            
         return sorted_subapertures, (count_col, count_row)

@@ -46,7 +46,7 @@ class GridSubapertureView(QWidget):
         
         return container
     
-
+    # FIXME: убрать в будущем эту функцию (вынесена в класс)
     @staticmethod
     def ndarray_to_pixmap(arr):
         

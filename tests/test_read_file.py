@@ -24,8 +24,9 @@ class TestJobFile(unittest.TestCase):
         
     # FIXME: написать побольше тестов которые протестируют функционал 
     # 
-    def test_grid(self):
-        pass  
+    def test_manual_mode(self):
+        name_file = "data\sunspot1300.h5"
+        images = self.__test_manager.start(name_file)
 
 if __name__ == "__main__": 
     unittest.main() 

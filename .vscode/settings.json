@@ -17,5 +17,6 @@
         "Pixmap",
         "qimg",
         "tobytes"
-    ]
+    ],
+    "C_Cpp.errorSquiggles": "enabled"
 }

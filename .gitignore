@@ -92,6 +92,9 @@ cover/
 *.mo
 *.pot
 tests.py
+launch.json
+tasks.json
+test_images.png
 # Django stuff:
 *.log
 local_settings.py

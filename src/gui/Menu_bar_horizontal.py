@@ -3,10 +3,6 @@ from PyQt5.QtWidgets import *
 
 class menu_bar_horizontal():
 
-    # def create(self):
-    #     menubar = self.menuBar()
-    #     return menubar
-
     
     def setup_menu(self, menubar, parent):
 
@@ -36,10 +32,7 @@ class menu_bar_horizontal():
         open_action = QAction('Новый', parent)
         open_action.triggered.connect(parent.new_file)  # Подключаем обработчик события
         file_menu.addAction(open_action)  
-        
 
-    def setup_option_open(self, file_menu, parent):
-        pass 
 
     def setup_option_save(self, file_menu, parent):
         # Действие "Сохранить файл"

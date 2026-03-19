@@ -74,8 +74,8 @@ class app_w_f_metric(QMainWindow):
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getOpenFileName(self, "Выберите файл", "", "Все файлы (*);;", options=options)
         if filename:
-            processed_models = self.__manager.start(filename)
-            # processed_models = self.__manager.process_date(filename)
+            # processed_models = self.__manager.start(filename)
+            processed_models = self.__manager.process_date(filename)
             if processed_models:
                 # Полностью очищаем старую структуру первой вкладки
                 layout = self.__first_tab.layout()

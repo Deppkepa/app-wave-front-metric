@@ -3,6 +3,7 @@ from src.controller.manager import manager
 import matplotlib.pyplot as plt
 from src.logic.format.h5 import h5
 from src.logic.model.model_subaperture import model_subaperture
+from src.logic.Image_processing import image_processing
 
 class TestJobFile(unittest.TestCase):
     __test_manager = manager
@@ -27,6 +28,11 @@ class TestJobFile(unittest.TestCase):
     def test_manual_mode(self):
         name_file = "data\sunspot1300.h5"
         images = self.__test_manager.start(name_file)
+
+    def test_search_contours(self):
+        name_file = "data\sunspot1300.h5"
+        images = h5.open_file(name_file)
+        print(image_processing.search_contours(images[0]))
 
 if __name__ == "__main__": 
     unittest.main() 

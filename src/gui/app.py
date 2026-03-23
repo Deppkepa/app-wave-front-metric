@@ -9,30 +9,16 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from src.gui.grid_over_image import grid_over_image
+from src.gui.parametrs import GridSettings
 
 
 #  Главное окно.
 
 class app_w_f_metric(QMainWindow):
-    __path_file:str = ""
-    
-
-    # FIXME: Сделать setap and propertu для менеджера
-
-    @property
-    def path_file(self) -> str:
-        return self.__path_file
-
-    @path_file.setter
-    def path_file(self, path: str):
-        self.__path_file = path
-
     def __init__(self):
         super().__init__()
         self.__manager = manager()
         self.__first_tab = QWidget()
-        # self.__label = grid_over_image(self.__first_tab)
-        self.__cell_size = 32
         self.initUI()
 
     def initUI(self):
@@ -41,7 +27,9 @@ class app_w_f_metric(QMainWindow):
 
         # Первая вкладка для сетки
         
-        first_vbox = QVBoxLayout(self.__first_tab)
+        first_vbox = QHBoxLayout(self.__first_tab)
+        
+        
         tabs.addTab(self.__first_tab, "Изображение")
 
         # Вторая вкладка с надписью "Привет, мир!"
@@ -74,8 +62,8 @@ class app_w_f_metric(QMainWindow):
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getOpenFileName(self, "Выберите файл", "", "Все файлы (*);;", options=options)
         if filename:
-            # processed_models = self.__manager.start(filename)
-            processed_models = self.__manager.process_date(filename)
+            processed_models, countors = self.__manager.start(filename)
+            # processed_models = self.__manager.process_date(filename)
             if processed_models:
                 # Полностью очищаем старую структуру первой вкладки
                 layout = self.__first_tab.layout()
@@ -87,13 +75,21 @@ class app_w_f_metric(QMainWindow):
                             widget.deleteLater()
 
                 # Создаем новый виджет с сеткой и добавляем его в существующий макет
+                
                 self.__label = grid_over_image(self.__first_tab)
-                self.__label.setPixmapAndDrawGrid(processed_models[0], cell_size=33)
+                
+                self.__label.setPixmapAndDrawGrid(processed_models[0], countors)
+                self.__settings_widget = GridSettings(self.__label, self.__first_tab)
+                # slices = self.__label.slice_image_by_grid()
+                # for idx, pix in enumerate(slices):
+                #     pix.save(f"data\slice_{idx}.png") # Сохраняем каждый фрагмент в файл
+                #     print(idx)
                 
                 # Добавляем виджет в существующий макет
                 layout.addWidget(self.__label)
+                layout.addWidget(self.__settings_widget)
 
-        print(f"Вы выбрали файл: {self.__path_file}")    
+          
 
     def save_file(self):
         print("сохранили файл!")

@@ -1,90 +1,141 @@
-from PyQt5.QtWidgets import QLabel, QApplication, QMainWindow
-from PyQt5.QtGui import QPainter, QPen
-from PyQt5.QtCore import Qt
-from src.logic.format.pixmap import pixmap
-
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
 
 class grid_over_image(QLabel):
-    # TODO: Просмотреть как работает код
-
     def __init__(self, parent=None):
         super(grid_over_image, self).__init__(parent)
         self.__pixmap = None
-        self.__cell_size = None
-        self.__points = []
-    
-    def setPixmapAndDrawGrid(self, value, cell_size=50):
-        """
-        Устанавливает пиксмап и одновременно запускает перерисовку с добавлением сетки.
-        
-        :param pixmap: Объект QPixmap, содержащий исходное изображение.
-        :param cell_size: Размер ячейки сетки (ширина и высота клетки).
-        """
+        self.__counts = {}
+        self._cell_size = 10
+        self._start_x = 0
+        self._start_y = 0
+        self._scale_factor = 1.0  # Начальный масштаб 100%
+        self.__click_history = [] 
 
-        self.__pixmap = pixmap.ndarray_to_pixmap(value.image)
-        self.__model_img = value
-        
-        self.__cell_size = cell_size
-        for i in value.subapertures:
+
+     # Свойство для получения истории кликов (защищаем от внешнего изменения списка)
+    @property
+    def click_history(self):
+        return self.__click_history.copy()
+
+    # Свойство для получения последней точки (или None)
+    @property
+    def last_click_point(self):
+        if self.__click_history:
+            return self.__click_history[-1]
+        return None
+    
+    # Свойство scale_factor
+    @property
+    def scale_factor(self):
+        return self._scale_factor
+
+    @scale_factor.setter
+    def scale_factor(self, value):
+        self._scale_factor = max(value, 0.1)  # Минимальный масштаб 10% от исходного размера
+        self.update()
+
+    def setPixmapAndDrawGrid(self, value, counts):
+        self.__pixmap = value
+        self.__counts = counts
+        self.update()  # Перерисовка
+
+    # --- НОВОЕ: Обработчик клика мыши ---
+    def mousePressEvent(self, event):
+        # Проверяем, что изображение загружено и клик был левой кнопкой мыши
+        if self.__pixmap is not None and event.button() == Qt.LeftButton:
             
-            self.__points.append(i.schematic_contour[:2])
-        self.update()  # принудительная перерисовка
-    
+            # Получаем координаты клика относительно верхнего левого угла виджета
+            click_pos = event.pos()
+            
+            # Вычисляем координаты на ИСХОДНОМ изображении
+            # Для этого делим координаты виджета на текущий коэффициент масштабирования
+            original_x = int(click_pos.x() / self.scale_factor)
+            original_y = int(click_pos.y() / self.scale_factor)
+            
+            # Сохраняем координаты в историю
+            self.__click_history.append((original_x, original_y))
+            
+            # Принудительно перерисовываем виджет, чтобы отобразить изменения (например, новую точку)
+            self.update()
+            
+            # Вызываем родительский метод (не обязательно, но хорошая практика)
+            super().mousePressEvent(event)
+
     def paintEvent(self, event):
-        if self.__pixmap is None or len(self.__points) == 0:
+        if self.__pixmap is None or len(self.__counts) == 0:
             return 
-
-
-        w = self.__pixmap.width()
-        h = self.__pixmap.height()
+        w = int(self.__pixmap.width() * self.scale_factor)
+        h = int(self.__pixmap.height() * self.scale_factor)
 
         painter = QPainter(self)
-        painter.drawPixmap(0, 0, self.__pixmap)
+        painter.drawPixmap(0, 0, self.__pixmap.scaled(w, h))
 
-        pen = QPen(Qt.blue, 2, Qt.PenStyle.SolidLine)
+        pen = QPen(Qt.GlobalColor.darkGreen, 4, Qt.PenStyle.SolidLine)
         painter.setPen(pen)
 
-        # группируем точки по столбцам и строкам
-        cols_points = []
-        rows_points = []
-        # FIXME: Вытащить самую большую h субапертур поделить и добавить парочку точек по которым нужно будет дорисовать сетку
-
-        for point in self.__points:
-            x, y = point  # поменяли порядок на привычный (x, y) 
-            cols_points.append(y)
-            rows_points.append(x)
-        cols_points = list(set(cols_points))
-        rows_points = list(set(rows_points))
-
-        sorted_numbers = sorted(cols_points)
-        result_cols = [sorted_numbers[0]] 
-
-        for number in sorted_numbers[1:]:
-            if abs(number - result_cols[-1]) > 5:  # Если разница с последним элементом результата больше 5
-                result_cols.append(number)
-        
-
-        sorted_numbers = sorted(rows_points)  # Сначала сортируем список
-
-        if sorted_numbers[0] // 2 > 5:
-            result_rows = [(sorted_numbers[0] // 2) + 1]  # Начинаем с первого элемента
-
-        print(w)
-        for number in sorted_numbers:
-            if abs(number - result_rows[-1]) > 5:  # Если разница с последним элементом результата больше 5
-                result_rows.append(number)
-
-        print(abs(result_rows[-1] - w))
-        while abs(result_rows[-1] - w) > 35:
-            result_rows.append(result_rows[-1] + 35)
-
-        
-        print(result_rows)
         # Горизонтальная сетка
-        for y in result_cols:
-            painter.drawLine(0, y - 2, w, y - 2)
+        for y in self.__counts['y']:
+            scaled_y = int(y * self.scale_factor)
+            painter.drawLine(0, scaled_y, w, scaled_y)
+
+        # Вертикальная сетка
+        for x in self.__counts['x']:
+            scaled_x = int(x * self.scale_factor)
+            painter.drawLine(scaled_x, 0, scaled_x, h)
+
+        
+        
+        # --- НОВОЕ: Рисуем точки кликов ---
+        pen_points = QPen(Qt.red, 3, Qt.PenStyle.SolidLine) # Толще и красным цветом
+        painter.setPen(pen_points)
+        
+        for (x, y) in self.click_history:
+            Xx = self.search_point(self.__counts['x'], x)
+            Yy = self.search_point(self.__counts['y'], y)
+            # Масштабируем координаты для отрисовки на экране
+            scaled_points = [
+                QPoint(int(Xx * self.scale_factor), int(Yy * self.scale_factor)),
+                QPoint(int((Xx + 36) * self.scale_factor), int(Yy * self.scale_factor)),
+                QPoint(int((Xx + 36) * self.scale_factor), int((Yy + 36) * self.scale_factor)),
+                QPoint(int(Xx * self.scale_factor), int((Yy + 36) * self.scale_factor))
+            ]
+            
+            # Рисуем квадрат по вершинам
+            painter.drawPolygon(QPolygon(scaled_points))
+            # # Масштабируем координаты сохраненной точки для отрисовки на экране
+            # painter.drawPoint(int(x * self.scale_factor), int(y * self.scale_factor))
+            
 
 
-        # вертикальное сетка
-        for x in result_rows:
-            painter.drawLine(x - 2, 0, x - 2, h)
+    def search_point(self, list_point, point):
+        for index, value in enumerate(list_point):
+            if value > point:
+                return list_point[index - 1]
+                
+    def slice_image_by_grid(self):
+        if self.__pixmap is None or len(self.__counts) == 0:
+            return []
+
+        slices = [] # Список для хранения нарезанных фрагментов
+
+        # Перебираем все горизонтальные полосы (по Y)
+        for i in range(len(self.__counts['y']) - 1):
+            y_top = self.__counts['y'][i]
+            y_bottom = self.__counts['y'][i + 1]
+            height = y_bottom - y_top
+
+            # Перебираем все вертикальные полосы (по X) внутри текущей горизонтальной полосы
+            for j in range(len(self.__counts['x']) - 1):
+                x_left = self.__counts['x'][j]
+                x_right = self.__counts['x'][j + 1]
+                width = x_right - x_left
+
+                # Вырезаем фрагмент из исходного изображения (не масштабированного!)
+                slice_pixmap = self.__pixmap.copy(x_left, y_top, width, height)
+                
+                # Сохраняем фрагмент в список (или сразу сохраняем на диск)
+                slices.append(slice_pixmap)
+
+        return slices    

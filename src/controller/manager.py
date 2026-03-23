@@ -16,10 +16,11 @@ class manager():
     
     def start(self, name_file:str):
         images = h5.open_file(name_file)
+        contors = image_processing.search_contours(images[0])
         result = []
         for image in images:
             result.append(pixmap.ndarray_to_pixmap(image))
-        return result
+        return result, contors
     
     
     

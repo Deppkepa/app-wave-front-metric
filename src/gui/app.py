@@ -37,7 +37,7 @@ class app_w_f_metric(QMainWindow):
         second_vbox = QVBoxLayout(second_tab)
         hello_world_label = QLabel("Привет, мир!")
         second_vbox.addWidget(hello_world_label)
-        tabs.addTab(second_tab, "Сообщение")
+        tabs.addTab(second_tab, "*Затычка*")
 
         # Меню с кнопкой "Открыть файл"
         menubar = self.menuBar()

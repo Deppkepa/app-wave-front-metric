@@ -1,7 +1,7 @@
 from abc import ABC
 import uuid
 
-class unique_entity(ABC):
+class UniqueEntity(ABC):
     __unique_code: str = ''
 
     def __init__(self) -> None:

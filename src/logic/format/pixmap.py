@@ -1,6 +1,6 @@
 from PyQt5.QtGui import QPixmap, QImage
 
-class pixmap():
+class Pixmap():
 
     @staticmethod
     def ndarray_to_pixmap(arr):

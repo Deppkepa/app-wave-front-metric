@@ -1,10 +1,10 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from src.logic.format.h5 import h5
-from src.logic.model.model_subaperture import model_subaperture
-from src.logic.model.model_image import model_image
-class image_processing:
+from src.logic.format.h5 import H5
+from src.logic.model.model_subaperture import ModelSubaperture
+from src.logic.model.model_image import ModelImage
+class ImageProcessing:
 
 
     def search_contours(image):
@@ -60,8 +60,8 @@ class image_processing:
         # box_1 = image_processing.check_borders(result_rows, image.shape[0], max(width_list))
         # box_2 = 
         
-        result_points = {'x': image_processing.check_borders(result_rows, image.shape[1], max(width_list)),
-                         'y': image_processing.check_borders(result_cols, image.shape[0], max(height_list)),
+        result_points = {'x': ImageProcessing.check_borders(result_rows, image.shape[1], max(width_list)),
+                         'y': ImageProcessing.check_borders(result_cols, image.shape[0], max(height_list)),
                          'max_width': max(width_list),
                          'max_height': max(height_list)}
         return result_points
@@ -81,20 +81,20 @@ class image_processing:
 
     def start(name_file:str):
         # ⁡⁢⁢⁢INFO⁡⁡⁡: Открывает файл и выдает массив с данными из файла
-        images = h5.open_file(name_file)
+        images = H5.open_file(name_file)
         collecting_model_img = []
         for image in images:
             # делаем картинку бинарной (картинка, светлые объекты=1, темные объекты=2)
             _, binary = cv2.threshold(image, 100, 255, cv2.THRESH_BINARY)
             # Ищем контуры субапертур(бинарное изображение, внешние точки, только угловые точки)
             contours, _ = cv2.findContours(binary.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            extracted_subapertures = image_processing.cut_subaperture(image, contours)
+            extracted_subapertures = ImageProcessing.cut_subaperture(image, contours)
             # FIXME: Тут нужно уже преобразовывать в субапертуры а потом уже в список собирать эти субапертуры
-            result_subaperture, index_table = image_processing.sequence_definition_sub(extracted_subapertures)
+            result_subaperture, index_table = ImageProcessing.sequence_definition_sub(extracted_subapertures)
             collecting_model_sub = []
             for i in result_subaperture:    
-                collecting_model_sub.append(model_subaperture().create(i['sequence_num'], i['subaperture'], i['schematic_contour']))
-            collecting_model_img.append(model_image().create(image, collecting_model_sub, index_table))
+                collecting_model_sub.append(ModelSubaperture().create(i['sequence_num'], i['subaperture'], i['schematic_contour']))
+            collecting_model_img.append(ModelImage().create(image, collecting_model_sub, index_table))
         return collecting_model_img
 
 

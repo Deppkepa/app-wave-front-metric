@@ -1,11 +1,11 @@
 # модель изображения с субапертур
-from src.logic.model.model_subaperture import model_subaperture
+from src.logic.model.model_subaperture import ModelSubaperture
 import numpy as np
 
-from src.logic.model.unique_entity import unique_entity
+from src.logic.model.unique_entity import UniqueEntity
 
 
-class model_image(unique_entity):
+class ModelImage(UniqueEntity):
     __image: np.ndarray = None
     __subapertures: list = [] # FIXME: должны сохранятся объекта типа model_subaperture
     __count: int = 0
@@ -27,7 +27,7 @@ class model_image(unique_entity):
 
     # TODO: Сделать класс валидатор который будет проверять правильность записи типов и т.д.
     @subapertures.setter
-    def subapertures(self, subaperture: model_subaperture):
+    def subapertures(self, subaperture: ModelSubaperture):
         self.__subapertures = subaperture
 
     @property
@@ -47,7 +47,7 @@ class model_image(unique_entity):
         self.__row_col = row_col
 
     def create(self, image:np.ndarray, subaperture:list, row_col:tuple):
-        item = model_image()
+        item = ModelImage()
         item.image = image
         item.subapertures = subaperture
         item.count = len(subaperture)

@@ -1,7 +1,7 @@
 # Класс реализующий верхнее меню
 from PyQt5.QtWidgets import *
 
-class menu_bar_horizontal():
+class MenuBarHorizontal():
 
     
     def setup_menu(self, menubar, parent):

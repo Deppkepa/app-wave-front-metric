@@ -1,7 +1,7 @@
 # Модель субапертуры - маленькое изображение на большом
 import numpy as np
 
-class model_subaperture():
+class ModelSubaperture():
     __num_grid: int = 0 # номер субапертуры в сетке на изображении
     __subaperture: np.ndarray = None # массив субапертуры
     __schematic_contour: tuple = () # (x, y, width, height)
@@ -36,7 +36,7 @@ class model_subaperture():
 
     
     def create(self, num_grid:int, subaperture:np.ndarray, schematic_contour:tuple):
-        item = model_subaperture()
+        item = ModelSubaperture()
         item.num_grid = num_grid
         item.subaperture = subaperture
         item.schematic_contour = schematic_contour

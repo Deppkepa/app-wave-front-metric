@@ -1,12 +1,12 @@
 # Точка входа
 import sys
 
-from src.gui.app import app_w_f_metric
+from src.gui.app import AppWFMetric
 from PyQt5.QtWidgets import QApplication
 
 def main():
     app = QApplication(sys.argv)
-    window = app_w_f_metric()
+    window = AppWFMetric()
     window.show()
     sys.exit(app.exec_())
 

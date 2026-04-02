@@ -1,23 +1,23 @@
 import sys
 from PyQt5.QtWidgets import *
-from src.gui.Menu_bar_horizontal import menu_bar_horizontal
-from src.controller.manager import manager
+from src.gui.Menu_bar_horizontal import MenuBarHorizontal
+from src.controller.manager import Manager
 from src.gui.grid_subaperture import GridSubapertureView
-from src.logic.model.model_image import model_image
+from src.logic.model.model_image import ModelImage
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-from src.gui.grid_over_image import grid_over_image
+from src.gui.grid_over_image import GridOverImage
 from src.gui.parametrs import GridSettings
 
 
 #  Главное окно.
 
-class app_w_f_metric(QMainWindow):
+class AppWFMetric(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.__manager = manager()
+        self.__manager = Manager()
         self.__first_tab = QWidget()
         self.initUI()
 
@@ -37,11 +37,11 @@ class app_w_f_metric(QMainWindow):
         second_vbox = QVBoxLayout(second_tab)
         hello_world_label = QLabel("Привет, мир!")
         second_vbox.addWidget(hello_world_label)
-        tabs.addTab(second_tab, "*Затычка*")
+        tabs.addTab(second_tab, "Отчет анализа")
 
         # Меню с кнопкой "Открыть файл"
         menubar = self.menuBar()
-        menu_bar = menu_bar_horizontal()
+        menu_bar = MenuBarHorizontal()
         menu_bar.setup_menu(menubar, self)
 
         
@@ -76,7 +76,7 @@ class app_w_f_metric(QMainWindow):
 
                 # Создаем новый виджет с сеткой и добавляем его в существующий макет
                 
-                self.__label = grid_over_image(self.__first_tab)
+                self.__label = GridOverImage(self.__first_tab)
                 
                 self.__label.setPixmapAndDrawGrid(processed_models[0], countors)
                 self.__settings_widget = GridSettings(self.__label, self.__first_tab)

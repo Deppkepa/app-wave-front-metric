@@ -2,9 +2,9 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
-class grid_over_image(QLabel):
+class GridOverImage(QLabel):
     def __init__(self, parent=None):
-        super(grid_over_image, self).__init__(parent)
+        super(GridOverImage, self).__init__(parent)
         self.__pixmap = None
         self.__counts = {}
         self._cell_size = 10

@@ -19,7 +19,7 @@ class Manager():
         contors = ImageProcessing.search_contours(images[0])
         result = []
         for image in images:
-            result.append(Pixmap.ndarray_to_Pixmap(image))
+            result.append(Pixmap.ndarray_to_pixmap(image))
         return result, contors
     
     

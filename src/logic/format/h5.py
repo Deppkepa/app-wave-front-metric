@@ -1,10 +1,10 @@
 # Главная задача чтение данных из файлов формата h5
 import h5py 
 import matplotlib.pyplot as plt
-from src.logic.model.model_image import model_image
+from src.logic.model.model_image import ModelImage
 from pathlib import Path
 
-class h5():
+class H5():
     # TODO: Сделать класс валидатор который будет проверять правильность записи типов и т.д.
 
     def open_file(name_file: str):

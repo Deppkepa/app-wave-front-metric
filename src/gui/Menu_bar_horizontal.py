@@ -1,70 +1,42 @@
 # Класс реализующий верхнее меню
 from PyQt5.QtWidgets import *
+from PyQt5.QtCore import pyqtSignal, QObject
 
-class MenuBarHorizontal():
+class MenuBarHorizontal(QObject):
 
-    
-    def setup_menu(self, menubar, parent):
+    signal_file_open = pyqtSignal()
+    signal_file_new = pyqtSignal()
+    signal_file_save = pyqtSignal()
+    signal_file_save_as = pyqtSignal()
+    signal_file_close = pyqtSignal()
+    signal_file_exit = pyqtSignal()
+    signal_edit_copy = pyqtSignal()
 
-        # меню файл
+    def setup_menu(self, menubar):
+
+        # --- Меню "Файл" ---
         file_menu = menubar.addMenu('Файл')
-        self.setup_option_new(file_menu, parent)
-        
-        
-        # Действие "Открыть файл"
-        open_action = QAction('Открыть', parent)
-        open_action.triggered.connect(parent.open_file)  # Подключаем обработчик события
-        file_menu.addAction(open_action) 
+        self._create_action(file_menu, 'Новый', 'Ctrl+N', self.signal_file_new)
+        file_menu.addSeparator()
+        self._create_action(file_menu, 'Открыть', 'Ctrl+O', self.signal_file_open)
+        self._create_action(file_menu, 'Сохранить', 'Ctrl+S', self.signal_file_save)
+        self._create_action(file_menu, 'Сохранить как...', None, self.signal_file_save_as)
+        file_menu.addSeparator()
+        self._create_action(file_menu, 'Закрыть файл', None, self.signal_file_close)
+        self._create_action(file_menu, 'Выход', 'Ctrl+Q', self.signal_file_exit)
 
-
-        self.setup_option_save(file_menu, parent)
-        self.setup_option_save_as(file_menu, parent)
-        self.setup_option_close(file_menu, parent)
-        self.setup_option_exit(file_menu, parent)
-
-        # меню правка
+        # --- Меню "Правка" ---
         edit_menu = menubar.addMenu('Правка')
-        self.setup_option_copy(edit_menu, parent)
-        
-    
-    def setup_option_new(self, file_menu, parent):
-        # Действие "Новый"
-        open_action = QAction('Новый', parent)
-        open_action.triggered.connect(parent.new_file)  # Подключаем обработчик события
-        file_menu.addAction(open_action)  
+        self._create_action(edit_menu, 'Копировать', 'Ctrl+C', self.signal_edit_copy)
 
 
-    def setup_option_save(self, file_menu, parent):
-        # Действие "Сохранить файл"
-        open_action = QAction('Сохранить', parent)
-        open_action.triggered.connect(parent.save_file)  # Подключаем обработчик события
-        file_menu.addAction(open_action)
-
-    def setup_option_save_as(self, file_menu, parent):
-        # Действие "сохранить как"
-        open_action = QAction('Сохранить как', parent)
-        open_action.triggered.connect(parent.save_as_file)  # Подключаем обработчик события
-        file_menu.addAction(open_action)  
-    
-    def setup_option_close(self, file_menu, parent):
-        # Действие "Закрыть файл"
-        open_action = QAction('Закрыть файл', parent)
-        open_action.triggered.connect(parent.close_file)  # Подключаем обработчик события
-        file_menu.addAction(open_action) 
-
-    def setup_option_exit(self, file_menu, parent):
-        # Действие "Выход"
-        open_action = QAction('Выход', parent)
-        open_action.triggered.connect(parent.exit_file)  # Подключаем обработчик события
-        file_menu.addAction(open_action) 
-
-    def setup_option_copy(self, edit_menu, parent):
-
-        # Действие "Копировать"
-        copy_action = QAction('Копировать', parent)
-        copy_action.triggered.connect(parent.copy_text)
-        edit_menu.addAction(copy_action)
-   
+    def _create_action(self, menu, text, shortcut, signal_to_emit):
+        action = QAction(text, menu.parent())
+        if shortcut:
+            action.setShortcut(shortcut)
+        # Когда пользователь нажмет кнопку, меню само испустит сигнал.
+        action.triggered.connect(signal_to_emit.emit)
+        menu.addAction(action)
     
 
     

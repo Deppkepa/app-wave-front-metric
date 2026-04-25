@@ -1,22 +1,41 @@
 {
-    "git.ignoreLimitWarning": true,
+    // 1. УКАЗЫВАЕМ ПУТЬ К ИНТЕРПРЕТАТОРУ (Самое важное!)
+    // Замените .venv на название вашей папки с виртуальным окружением
+    
+
+    // 2. НАСТРОЙКИ ДЛЯ UNITTEST
+    "python.testing.unittestEnabled": true,
+    "python.testing.pytestEnabled": false,
     "python.testing.pytestArgs": [
         "tests"
     ],
-    "python.testing.unittestEnabled": true,
-    "python.testing.pytestEnabled": false,
-    "python.testing.unittestArgs": [
-        "-v",
-        "-s",
-        "./Tests",
-        "-p",
-        "test_*.py"
-    ],
+    // "python.testing.unittestArgs": [
+    //     "-v",
+    //     "-s",
+    //     "./tests",
+    //     "-p",
+    //     "test_*.py"
+    // ],
+    
     "cSpell.words": [
+        "датасета",
         "itemsize",
         "Pixmap",
         "qimg",
         "tobytes"
     ],
-    "C_Cpp.errorSquiggles": "enabled"
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "test_*.py"
+    ]
+
+    // 3. НАСТРОЙКИ ДЛЯ COVERAGE (если используете встроенный или плагин)
+    // Это поможет плагину покрытия найти исходники
+    // "python.coverage.path": ".venv/Scripts/coverage",
+    
+    // 4. УБИРАЕМ настройки pytest, чтобы не было конфликтов
+    // "python.testing.pytestArgs": ["tests"] 
 }

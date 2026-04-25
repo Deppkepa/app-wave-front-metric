@@ -8,17 +8,17 @@
             "program": "${file}",
             "console": "integratedTerminal"
         },
-        {
-            "name": "C/C++: cl.exe сборка и отладка активного файла",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${fileDirname}",
-            "environment": [],
-            "console": "integratedTerminal",
-            "preLaunchTask": "C/C++: cl.exe сборка активного файла"
-        }
+        // {
+        //     "name": "C/C++: cl.exe сборка и отладка активного файла",
+        //     "type": "cppvsdbg",
+        //     "request": "launch",
+        //     "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
+        //     "args": [],
+        //     "stopAtEntry": false,
+        //     "cwd": "${fileDirname}",
+        //     "environment": [],
+        //     "console": "integratedTerminal",
+        //     "preLaunchTask": "C/C++: cl.exe сборка активного файла"
+        // }
     ]
 }

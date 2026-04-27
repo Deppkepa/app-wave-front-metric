@@ -35,7 +35,9 @@ class GridOverImage(QLabel):
         """Устанавливает масштаб и обновляет кэш изображения."""
         self._scale_factor = max(value, 0.1)
         self._scaled_pixmap = None # Сбрасываем кэш при изменении масштаба
+        self.updateGeometry()   # <-- добавьте эту строку
         self.update()
+
 
     # --- Методы взаимодействия ---
     def set_pixmap_and_draw_grid(self, pixmap, counts):
@@ -51,22 +53,27 @@ class GridOverImage(QLabel):
 
     # --- Обработка событий ---
     def mousePressEvent(self, event):
-        if not self.__pixmap or event.button() != Qt.LeftButton:
+        if not self.__pixmap:
             return
-
-        click_pos = event.pos()
-        
-        # Переводим координаты клика в координаты исходного изображения
-        original_x = int(click_pos.x() / self.scale_factor)
-        original_y = int(click_pos.y() / self.scale_factor)
-        
-        x_idx = bisect.bisect_right(self._counts['x'], original_x) - 1
-        y_idx = bisect.bisect_right(self._counts['y'], original_y) - 1
-
-        if (0 <= x_idx < len(self._counts['x']) - 1 and 
-            0 <= y_idx < len(self._counts['y']) - 1):
-            self.__click_history.append((x_idx, y_idx))
+        if event.button() == Qt.LeftButton:
+            # ... существующая логика клика по сетке ...
+            # (код, который вычисляет x_idx, y_idx и добавляет клик в историю)
             self.update()
+            click_pos = event.pos()
+        
+            # Переводим координаты клика в координаты исходного изображения
+            original_x = int(click_pos.x() / self.scale_factor)
+            original_y = int(click_pos.y() / self.scale_factor)
+            
+            x_idx = bisect.bisect_right(self._counts['x'], original_x) - 1
+            y_idx = bisect.bisect_right(self._counts['y'], original_y) - 1
+
+            if (0 <= x_idx < len(self._counts['x']) - 1 and 
+                0 <= y_idx < len(self._counts['y']) - 1):
+                self.__click_history.append((x_idx, y_idx))
+                self.update()
+        else:
+            super().mousePressEvent(event)
 
     # --- Отрисовка ---
     def paintEvent(self, event):
@@ -143,7 +150,20 @@ class GridOverImage(QLabel):
         if y_coord == self._counts['y'][0]:
             return self._counts['y'][1] - y_coord - 5
         return self._counts['max_height']
-        
+    
+    # В классе GridOverImage добавьте:
+    def original_size_hint(self):
+        if self.__pixmap:
+            return QSize(self.__pixmap.width(), self.__pixmap.height())
+        return QSize(400, 300)
+
+    def sizeHint(self):
+        if self.__pixmap:
+            w = int(self.__pixmap.width() * self.scale_factor)
+            h = int(self.__pixmap.height() * self.scale_factor)
+            return QSize(w, h)
+        return QSize(400, 300)
+    
     def _get_cell_rect(self, x_idx, y_idx):
         """
         Возвращает QRect для ячейки по индексам.
@@ -172,175 +192,3 @@ class GridOverImage(QLabel):
                         
         except IndexError:
             return None
-
-
-# from PyQt5.QtWidgets import *
-# from PyQt5.QtGui import *
-# from PyQt5.QtCore import *
-# import bisect
-
-# class GridOverImage(QLabel):
-#     def __init__(self, parent=None):
-#         super(GridOverImage, self).__init__(parent)
-#         self.__pixmap = None # картинка
-#         self.__counts = {}
-#         self._cell_size = 10
-#         self._start_x = 0
-#         self._start_y = 0
-#         self._scale_factor = 1.0  # Начальный масштаб 100%
-#         self.__click_history = [] # координаты кликов
-
-
-#      # Свойство для получения истории кликов (защищаем от внешнего изменения списка)
-#     @property
-#     def click_history(self):
-#         return self.__click_history.copy()
-
-#     # Свойство для получения последней точки (или None)
-#     @property
-#     def last_click_point(self): # зачем?
-#         if self.__click_history:
-#             return self.__click_history[-1]
-#         return None
-    
-#     # Свойство scale_factor
-#     @property
-#     def scale_factor(self):
-#         return self._scale_factor
-
-#     @scale_factor.setter
-#     def scale_factor(self, value): # подумать над этим
-#         self._scale_factor = max(value, 0.1)  # Минимальный масштаб 10% от исходного размера
-#         self.update()
-
-
-
-#     def setPixmapAndDrawGrid(self, value, counts):
-#         self.__pixmap = value
-#         self.__counts = counts
-#         self.update()  # Перерисовка
-
-#     # --- НОВОЕ: Обработчик клика мыши ---
-#     def mousePressEvent(self, event):
-#         if self.__pixmap is None or event.button() != Qt.LeftButton:
-#             return
-
-#         click_pos = event.pos()
-
-#         # Координаты на исходном изображении
-#         original_x = int(click_pos.x() / self.scale_factor)
-#         original_y = int(click_pos.y() / self.scale_factor)
-
-#         # Определяем индексы ближайших линий сетки
-#         x_idx = bisect.bisect_right(self.__counts['x'], original_x) - 1
-#         y_idx = bisect.bisect_right(self.__counts['y'], original_y) - 1
-
-#         # Проверяем, что индексы валидны
-#         if x_idx + 1 < len(self.__counts['x']) and y_idx + 1 < len(self.__counts['y']):
-#             # Сохраняем индексы ячеек, а не просто координаты
-#             self.__click_history.append((x_idx, y_idx))
-#             self.update()
-
-
-    
-
-#     def paintEvent(self, event):
-
-#         if self.__pixmap is None or len(self.__counts) == 0:
-#             return # написать ошибку
-#         w = int(self.__pixmap.width() * self.scale_factor)
-#         h = int(self.__pixmap.height() * self.scale_factor)
-        
-
-#         painter = QPainter(self)
-#         painter.drawPixmap(0, 0, self.__pixmap.scaled(w, h))
-#         pen = QPen(Qt.GlobalColor.darkGreen, 2, Qt.PenStyle.SolidLine)
-#         painter.setPen(pen)
-            
-#         # Для каждой точки пересечения линий сетки
-#         print(self.__counts['y'])
-#         height_sub = self.__counts['max_height']
-#         width_sub = self.__counts['max_width']
-#         for x in self.__counts['x']:
-#             for y in self.__counts['y']:
-#                 scaled_x = int(x * self.scale_factor)
-#                 scaled_y = int(y * self.scale_factor)
-                
-#                 # --- 1 случай: верхняя сторона ---
-#                 if self.__counts['y'][0] == y:
-#                     height_sub = self.__counts['y'][1] - y - 5
-#                 else:
-#                     height_sub = self.__counts['max_height']
-                    
-#                 # --- 2 случай: левая сторона ---
-#                 if self.__counts['x'][0] == x:
-#                     width_sub = self.__counts['x'][1] - x - 5
-#                 else:
-#                     width_sub = self.__counts['max_width']
-                    
-#                 # --- 3 случай: нижняя сторона ---
-#                 if scaled_y >= h:
-#                     continue
-                
-#                 if scaled_x >= w:
-#                     continue
-                
-#                 # --- 4 случай: правая граница ---
-#                 if self.__counts['x'][-1] == x:
-#                     if w - scaled_x - int(5 * self.scale_factor) <= int(15 * self.scale_factor):
-#                         continue    
-#                 rect = QRect(scaled_x, scaled_y, 
-#                             int(width_sub * self.scale_factor), 
-#                             int(height_sub * self.scale_factor))
-#                 painter.drawRect(rect)
-            
-
-#         # Рисуем квадраты по клику
-#         pen_points = QPen(Qt.red, 2, Qt.PenStyle.SolidLine)
-#         painter.setPen(pen_points)
-#         for (x_idx, y_idx) in self.click_history:
-            
-#             # Определяем границы ячейки
-#             x0 = self.__counts['x'][x_idx]
-#             y0 = self.__counts['y'][y_idx]
-
-#             # Масштабируем границы
-#             x0s = int(x0 * self.scale_factor)
-#             y0s = int(y0 * self.scale_factor)
-            
-#             # --- 1. Проверка: Верхняя граница (первый ряд) ---
-#             # Если это первая строка сетки, используем специальную высоту
-#             if self.__counts['y'][0] == self.__counts['y'][y_idx]:
-#                 height_sub = self.__counts['y'][1] - self.__counts['y'][y_idx] - 5
-#             else:
-#                 height_sub = self.__counts['max_height']
-
-#             # --- 2. Проверка: Левая граница (первый столбец) ---
-#             # Если это первый столбец сетки, используем специальную ширину
-#             if self.__counts['x'][0] == self.__counts['x'][x_idx]:
-#                 width_sub = self.__counts['x'][1] - self.__counts['x'][x_idx] - 5
-#             else:
-#                 width_sub = self.__counts['max_width']
-
-#             # Масштабируем координаты и размеры для отрисовки на экране
-#             x0s = int(x0 * self.scale_factor)
-#             y0s = int(y0 * self.scale_factor)
-#             scaled_width = int(width_sub * self.scale_factor)
-#             scaled_height = int(height_sub * self.scale_factor)
-
-#             # --- 3. Проверка: Нижняя и правая границы (вне виджета) ---
-#             # Пропускаем отрисовку, если квадрат полностью или частично выходит за границы виджета
-#             if y0s >= h or x0s >= w:
-#                 continue
-
-#             # --- 4. Проверка: Правая граница (последний столбец) ---
-#             # Если это последняя ячейка по X, проверяем условие "слишком близко к краю"
-#             if self.__counts['x'][-1] == self.__counts['x'][x_idx + 1]:
-#                 # Проверяем, не слишком ли мало места осталось до правого края виджета
-#                 if w - x0s - int(5 * self.scale_factor) <= int(15 * self.scale_factor):
-#                     continue
-            
-#             # Рисуем квадрат внутри ячейки (например, отступив от краёв)
-#             rect = QRect(x0s, y0s, scaled_width, scaled_height)
-#             painter.drawRect(rect)
-                

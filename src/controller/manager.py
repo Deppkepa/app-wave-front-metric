@@ -11,11 +11,14 @@ class Manager():
     def process_date(self, name_file:str): # не пользуется
         return ImageProcessing.start(name_file)
     
-    def start(self, name_file:str):
+    def start(self, name_file:str, progress_callback=None):
         images = H5().open_file(name_file)
+        total = len(images)
         contours = ImageProcessing.search_contours(images[0])
         result = []
-        for image in images:
+        for i, image in enumerate(images):
+            if progress_callback is not None:
+                progress_callback(i + 1, total)
             result.append(Pixmap.ndarray_to_pixmap(image))
         return result, contours
     

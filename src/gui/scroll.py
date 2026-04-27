@@ -87,10 +87,15 @@ class ScrollableImageView(QScrollArea):
     def zoom_out(self, anchor: QPoint = None): # Уменьшает уменьшает на шаг
         self.zoom_to(self._zoom_factor / self._zoom_step, anchor)
 
-    def reset_zoom(self): 
+    def reset_zoom(self):
         self.zoom_to(1.0)
-        QTimer.singleShot(50, lambda: self.horizontalScrollBar().setValue(0))
-        QTimer.singleShot(50, lambda: self.verticalScrollBar().setValue(0))
+        self.horizontalScrollBar().setValue(0)
+        self.verticalScrollBar().setValue(0)
+    
+    # def reset_zoom(self): 
+    #     self.zoom_to(1.0)
+    #     QTimer.singleShot(50, lambda: self.horizontalScrollBar().setValue(0))
+    #     QTimer.singleShot(50, lambda: self.verticalScrollBar().setValue(0))
 
     def wheelEvent(self, event: QWheelEvent):
         if event.modifiers() == Qt.ControlModifier:

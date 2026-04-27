@@ -48,6 +48,7 @@ class GridOverImage(QLabel):
         """
         self.__pixmap = pixmap
         self._counts = counts
+        # self.__click_history.clear()   # ОЧИЩАЕМ ИСТОРИЮ
         self._scaled_pixmap = None # Сбрасываем кэш при смене картинки
         self.update()
 

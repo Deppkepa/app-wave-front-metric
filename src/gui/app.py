@@ -86,43 +86,28 @@ class AppWFMetric(QMainWindow):
         filename, _ = QFileDialog.getOpenFileName(self, "Выберите файл", "", "Все файлы (*);;", options=options)
         if not filename:
             return
-        # настраиваем диапозон. начальное значение и показываем програсс бар
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
-        
-        self.statusBar().showMessage("Загрузка изображения...", 0)
-        # принудительно заставляет перерисовать окно (не нужно ждать окончание метода чтобы окно перерисовалось.)
-        QApplication.processEvents() 
+        self.statusBar().showMessage("Открытие файла и сжатие...", 0)
+        QApplication.processEvents()
 
         self.current_thread = LoaderThread(filename)
-        self.current_thread.finished.connect(lambda m, c: self._on_load_finished(target_layout, m, c))
+        self.current_thread.finished.connect(lambda manager: self._on_load_finished(target_layout, manager))
         self.current_thread.error.connect(self._on_load_error)
         self.current_thread.progress.connect(self._on_load_progress)
         self.current_thread.start()
 
-
-    def _on_load_finished(self, target_layout, processed_models, contours):
+    def _on_load_finished(self, target_layout, manager):
         self.progress_bar.setVisible(False)
-        self.statusBar().showMessage("Готово", 2000)
-
-        if not processed_models:
-            QMessageBox.warning(self, "Ошибка", "Не удалось обработать изображение")
-            return
+        total = manager.get_num_images()
+        self.statusBar().showMessage(f"Загружено {total} изображений (сжато в память)", 2000)
 
         self.clear_layout(target_layout)
-        
-        carousel = ImageCarousel()
-        carousel.set_images(processed_models, contours)
-        # viewer = GridOverImage()
-        # viewer.set_pixmap_and_draw_grid(processed_models, contours)
 
-        # scrollable = ScrollableImageView()
-        # scrollable.set_image_widget(viewer)
-        # scrollable.zoom_to(1.0)
+        carousel = ImageCarousel()
+        carousel.set_manager(manager, total)
 
         settings_widget = GridSettings(carousel.scrollable)
-        
+
         target_layout.addWidget(carousel, stretch=1)
         target_layout.addWidget(settings_widget, stretch=0)
 

@@ -1,94 +1,67 @@
-# Главная задача чтение данных из файлов формата h5
 import h5py
 from pathlib import Path
-
+import numpy as np
 
 class H5ReaderError(Exception):
-    """Базовый класс для всех ошибок, связанных с чтением HDF5 файлов этим модулем."""
     pass
 
 class CountKeyError(H5ReaderError):
-    """Ошибка, когда ключей больше одного."""
     pass
 
 class FileAccessError(Exception):
-    """Ошибка, связанная с доступом к файлу (нет прав, не найден)."""
     pass
 
-class H5():
-    __key:str = '' # ключ от данных
-    __count_image:int = 0 # количество изображений
-    __shape_image:tuple = () # Размеры изображения
+# --- Новый класс для ленивого чтения (только по индексу) ---
+class H5LazyReader:
+    def __init__(self, file_path: str):
+        self._path = Path(file_path).resolve()
+        self._f = None
+        self._key = None
+        self._num_images = None
+        self._image_shape = None
+
+    def _ensure_open(self):
+        if self._f is None:
+            if not self._path.is_file():
+                raise FileAccessError(f"File not found: {self._path}")
+            self._f = h5py.File(self._path, 'r')
+            keys = list(self._f.keys())
+            if len(keys) == 0:
+                raise H5ReaderError("No keys in file")
+            if len(keys) > 1:
+                raise CountKeyError(f"Expected 1 key, got {keys}")
+            self._key = keys[0]
+            shape = self._f[self._key].shape
+            if len(shape) != 3 or shape[0] <= 0 or shape[1] <= 0 or shape[2] <= 0:
+                raise H5ReaderError(f"Invalid shape {shape}, expected (N, H, W)")
+            self._num_images = shape[0]
+            self._image_shape = shape[1:]
 
     @property
-    def key(self) -> str:
-        return self.__key
-    
-    @key.setter
-    def key(self, value: str):
-        self.__key = value
-        
-        
+    def num_images(self) -> int:
+        self._ensure_open()
+        return self._num_images
+
     @property
-    def count_image(self) -> int:
-        return self.__count_image
-    
-    @count_image.setter
-    def count_image(self, value: int):
-        self.__count_image = value
-    
-    
-    @property
-    def shape_image(self) -> tuple:
-        return self.__shape_image
-    
-    @shape_image.setter
-    def shape_image(self, value: tuple):
-        self.__shape_image = value
-        
-    
-    # Проверка расположения файла по пути
-    def check_file_exists(self, path_file: str):
-        if not path_file.is_file():
-            raise FileAccessError(f"The file was not found on the way: {path_file}")
-    
-    def open_file(self, name_file: str):
-        input_path = Path(name_file).resolve()
-        self.check_file_exists(input_path)
-        
-        # Сначала пробуем открыть файл (ошибки доступа)
-        try:
-            f = h5py.File(input_path, 'r')
-        except OSError as e:
-            raise H5ReaderError(f"Couldn't open the file {input_path}: {e}")
+    def image_shape(self) -> tuple:
+        self._ensure_open()
+        return self._image_shape
 
-        # Если файл открылся успешно, работаем с ним в контексте менеджера
-        with f:
-            key_f = list(f.keys())
-            if len(key_f) == 0:
-                raise H5ReaderError("The file does not contain any keys (an empty file)")
-            if len(key_f) > 1:
-                raise CountKeyError(f"More than one key was found in the file: {key_f}. One key is expected.")  
-            self.key = key_f[0]    
-            # Валидация формы
-            shape_f = f[self.key].shape
-            if len(shape_f) == 3 and shape_f[0] > 0 and shape_f[1] > 0 and shape_f[2] > 0:
-                self.count_image = shape_f[0]
-                self.shape_image = shape_f[1:]
-            else:
-                raise H5ReaderError(f"Incorrect dimension of the data. Expected 3 axes (number of images, height, width), received {shape_f}.")
-            data = f[self.key][:] # Вот здесь может возникнуть ошибка при чтении
-            return data
+    def get_image(self, index: int) -> np.ndarray:
+        self._ensure_open()
+        if index < 0 or index >= self.num_images:
+            raise IndexError(f"Index {index} out of range (0..{self.num_images-1})")
+        return self._f[self._key][index]
 
+    def close(self):
+        if self._f is not None:
+            self._f.close()
+            self._f = None
 
+    def __enter__(self):
+        self._ensure_open()
+        return self
 
-        
+    def __exit__(self, *args):
+        self.close()
 
-
-            # FIXME: закрыть файл
-            # TODO: записать размер изображений в модель
-            # TODO: Сделать класс валидатор который будет проверять правильность записи типов и т.д.
-
-            # TODO: функция которая на вход берет изображение разбивает на субапертуры 
-
-            # TODO: для проверки вывести картинку субапертуры

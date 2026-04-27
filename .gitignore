@@ -6,8 +6,8 @@
 *.d
 
 sript_test.py
-loader_thread.py
-model_point_subaperture.py
+
+
 
 # Compiled Object files
 *.slo

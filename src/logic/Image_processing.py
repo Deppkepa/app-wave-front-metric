@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from src.logic.format.h5 import H5
+
 from src.logic.model.model_subaperture import ModelSubaperture
 from src.logic.model.model_image import ModelImage
 from collections import Counter

@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSlider, QPushBut
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from src.gui.scroll import ScrollableImageView
 from src.gui.grid_over_image import GridOverImage
+import os
 
 class ImageCarousel(QWidget):
     currentIndexChanged = pyqtSignal(int)
@@ -44,6 +45,14 @@ class ImageCarousel(QWidget):
         control_layout.addWidget(self.slider, stretch=1)
         control_layout.addWidget(self.index_label)
         control_layout.addWidget(self.next_btn)
+        
+        self.save_all_btn = QPushButton("Сохранить для всех кадров")
+        self.save_all_btn.clicked.connect(self.save_all_frames)
+        control_layout.addWidget(self.save_all_btn)
+        
+        
+        # Добавьте её в панель управления, например, в конец control_layout
+        
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -56,6 +65,34 @@ class ImageCarousel(QWidget):
         self._slider_timer.timeout.connect(self._on_slider_timer_timeout)
         self._slider_update_interval = 30   # мс (около 33 кадров в секунду)
 
+    
+    def save_current_for_analysis(self):
+        if self._manager is None:
+            return
+        excluded = self.viewer.get_excluded_cells()  # список кортежей (col, row)
+        print(excluded)
+        self._manager.save_subapertures_for_frame(self._current_index, excluded)
+        print(f"Запущено сохранение для кадра {self._current_index}")  
+    
+    def save_all_frames(self):
+        if self._manager is None:
+            return
+        excluded = self.viewer.get_excluded_cells()   # текущий шаблон исключённых
+        self._manager.save_subapertures_for_all_frames(excluded)
+        print("Запущено сохранение для всех кадров")
+        
+    def on_test_prepare(self):
+        if self._manager is None:
+            print("Менеджер ещё не загружен. Откройте файл сначала.")
+            return
+        job_dir, db_path = self._manager.prepare_analysis_job()
+        print(f"Папка задания: {job_dir}")
+        print(f"База данных: {db_path}")
+        if os.path.exists(db_path):
+            print("База данных успешно создана.")
+        else:
+            print("ОШИБКА: база данных не создана.")
+        
     def set_manager(self, manager, total_images):
         self._manager = manager
         self._total_count = total_images
@@ -112,3 +149,6 @@ class ImageCarousel(QWidget):
 
     def reset_zoom(self):
         self.scrollable.reset_zoom()
+        
+    def get_excluded_cells(self):
+        return self.viewer.get_excluded_cells()

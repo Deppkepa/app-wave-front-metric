@@ -19,7 +19,6 @@ class LoaderThread(QThread):
         try:
             manager = Manager(cache_size=10)   # кэш 10 QPixmap
             def report_progress(current, total):
-                print(current, total)
                 self.progress.emit(current, total)
             total = manager.open_file(self.file_path, progress_callback=report_progress)
             if self._is_canceled:

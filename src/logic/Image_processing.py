@@ -21,6 +21,8 @@ class SizeError(Exception):
 
 
 class ImageProcessing:
+    
+    # Добавьте в класс ImageProcessing новый метод или измените search_contours:
 
     @staticmethod
     def search_contours(image: np.ndarray):
@@ -50,11 +52,10 @@ class ImageProcessing:
 
                     width_list.append(width)
                     height_list.append(height)
+        
         result_cols, result_rows = ImageProcessing.simplification_contours(point_x, point_y)
-        # box_1 = image_processing.check_borders(result_rows, image.shape[0], max(width_list))
-        # box_2 = 
-        result_points = {'x': ImageProcessing.check_borders(result_rows, image.shape[1], max(width_list)),
-                         'y': ImageProcessing.check_borders(result_cols, image.shape[0], max(height_list)),
+        result_points = {'x': ImageProcessing.check_borders(result_rows.copy(), image.shape[1], max(width_list)),
+                         'y': ImageProcessing.check_borders(result_cols.copy(), image.shape[0], max(height_list)),
                          'max_width': max(width_list),
                          'max_height': max(height_list)}
         return result_points
@@ -113,6 +114,10 @@ class ImageProcessing:
 
     def check_point(point_first, point_next, size_sides):
         return point_first - point_next - size_sides
+    
+    
+    
+
 
 
 

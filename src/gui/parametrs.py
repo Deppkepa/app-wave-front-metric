@@ -1,8 +1,11 @@
 # src/gui/parametrs.py
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtCore import pyqtSignal
 
 class GridSettings(QWidget):
+    saveRequested = pyqtSignal()
     """
     Панель управления для настройки отображения изображения с сеткой.
     Содержит ползунок масштаба, кнопку сброса и (опционально) другие параметры.
@@ -19,6 +22,8 @@ class GridSettings(QWidget):
 
         # Основной вертикальный layout
         layout = QVBoxLayout(self)
+        
+        
 
         # --- Блок масштабирования ---
         zoom_group = QGroupBox("Масштаб")
@@ -48,6 +53,13 @@ class GridSettings(QWidget):
 
         # --- Добавляем группу в основной layout ---
         layout.addWidget(zoom_group)
+        
+        
+        # ---- НОВАЯ КНОПКА ----
+        self.save_btn = QPushButton("Сохранить для анализа")
+        self.save_btn.clicked.connect(self.saveRequested.emit)
+        layout.addWidget(self.save_btn)
+        
         layout.addStretch()   # Прижимаем содержимое к верху
 
         # Если в будущем понадобятся другие параметры (цвет сетки, толщина линий и т.д.),

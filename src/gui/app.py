@@ -19,7 +19,7 @@ class AppWFMetric(QMainWindow):
         self.__first_tab = QWidget()
         self.__menubar = self.menuBar()
         self.__menu_handler = MenuBarHorizontal()
-        self.current_thread = None
+        self.current_thread = None  # или в другое место
         self.initUI()
 
     def initUI(self):
@@ -45,6 +45,8 @@ class AppWFMetric(QMainWindow):
         self.center_window()
         self.setWindowTitle('Метрика волнового фронта')
         
+
+        
         # --- ПРОГРЕСС БАР ---
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
@@ -55,6 +57,7 @@ class AppWFMetric(QMainWindow):
         self.statusBar().addPermanentWidget(self.progress_bar)
 
 
+    
     def center_window(self):
         screen_geometry = QApplication.primaryScreen().availableGeometry()
         screen_center = screen_geometry.center()
@@ -107,9 +110,16 @@ class AppWFMetric(QMainWindow):
         carousel.set_manager(manager, total)
 
         settings_widget = GridSettings(carousel.scrollable)
+        settings_widget.saveRequested.connect(carousel.save_current_for_analysis)
 
         target_layout.addWidget(carousel, stretch=1)
         target_layout.addWidget(settings_widget, stretch=0)
+        
+        manager.run_background_init()# Таймер для обнаружения появления prepare_thread
+        self._prepare_timer = QTimer()
+        self._prepare_timer.setInterval(50)   # проверяем каждые 50 мс
+        self._prepare_timer.timeout.connect(lambda: self._check_prepare_thread(manager))
+        self._prepare_timer.start(100)  # проверяем каждые 100 мс
 
 
     def _on_load_error(self, error_msg):
@@ -134,9 +144,56 @@ class AppWFMetric(QMainWindow):
             else:
                 event.ignore()
                 return
+        # Остановка фонового потока инициализации (PreinitThread)
+        # if hasattr(self, 'preinit_thread') and self.preinit_thread and self.preinit_thread.isRunning():
+        #     self.preinit_thread.cancel()
+        #     self.preinit_thread.wait()
+        # event.accept()
+        if hasattr(self, '_manager') and self._manager:
+            self._manager.cancel_background_init()   # отмена PreinitThread
+            self._manager.cancel_prepare()           # отмена PrepareThread
+        # ... остальной код (LoaderThread и т.д.) ...
         event.accept()
 
+    def _check_prepare_thread(self, manager):
+        """Проверяет, создал ли менеджер поток подготовки."""
+        if hasattr(manager, 'prepare_thread') and manager.prepare_thread is not None:
+            self._prepare_timer.stop()
+            # Подключаем сигналы потока к слотам
+            manager.prepare_thread.progress.connect(self._on_prepare_progress)
+            manager.prepare_thread.finished.connect(self._on_prepare_finished)
+            manager.prepare_thread.error.connect(self._on_prepare_error)
+            # Настраиваем прогресс-бар
+            total = manager.prepare_thread.total
+            self.progress_bar.setRange(0, total)
+            self.progress_bar.setValue(0)
+            self.progress_bar.setVisible(True)
+            self.statusBar().showMessage("Подготовка субапертур...", 0)
 
+    def _on_prepare_progress(self, current, total):
+        self.progress_bar.setValue(current)
+        self.statusBar().showMessage(f"Подготовка: {current}/{total}", 0)
+        if current == total:
+            self.progress_bar.setVisible(False)
+            self.statusBar().showMessage("Подготовка завершена", 2000)
+
+    def _on_prepare_finished(self):
+        self.progress_bar.setVisible(False)
+        self.statusBar().showMessage("Подготовка завершена", 2000)
+        # Отключаем сигналы (опционально)
+        if hasattr(self, '_manager') and self._manager and hasattr(self._manager, 'prepare_thread'):
+            try:
+                self._manager.prepare_thread.progress.disconnect()
+                self._manager.prepare_thread.finished.disconnect()
+                self._manager.prepare_thread.error.disconnect()
+            except:
+                pass
+
+    def _on_prepare_error(self, err):
+        self.progress_bar.setVisible(False)
+        self.statusBar().showMessage("Ошибка подготовки", 3000)
+        QMessageBox.critical(self, "Ошибка подготовки", err)
+        
     def clear_layout(self, layout):
         """Рекурсивно удаляет все виджеты из layout"""
         if layout is not None:

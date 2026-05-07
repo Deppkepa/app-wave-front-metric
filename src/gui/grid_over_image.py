@@ -14,17 +14,13 @@ class GridOverImage(QLabel):
         self._counts = {}  # Данные для сетки
         self._scale_factor = 1.0
         self.__click_history = [] # Защищаем список от внешнего изменения
-        
+        self.setMouseTracking(True)   # ← добавляем
     # --- Свойства ---
     @property
     def click_history(self):
         """Возвращает копию истории кликов для защиты данных."""
         return self.__click_history.copy()
 
-    # @property
-    # def last_click_point(self):
-    #     """Возвращает координаты последнего клика или None."""
-    #     return self.__click_history[-1] if self.__click_history else None
 
     @property
     def scale_factor(self):
@@ -38,7 +34,7 @@ class GridOverImage(QLabel):
         self.updateGeometry()   # <-- добавьте эту строку
         self.update()
 
-
+    
     # --- Методы взаимодействия ---
     def set_pixmap_and_draw_grid(self, pixmap, counts):
         """
@@ -71,7 +67,10 @@ class GridOverImage(QLabel):
 
             if (0 <= x_idx < len(self._counts['x']) - 1 and 
                 0 <= y_idx < len(self._counts['y']) - 1):
-                self.__click_history.append((x_idx, y_idx))
+                if (x_idx, y_idx) in self.__click_history:
+                    self.__click_history.remove((x_idx, y_idx))
+                else:
+                    self.__click_history.append((x_idx, y_idx))
                 self.update()
         else:
             super().mousePressEvent(event)
@@ -193,3 +192,31 @@ class GridOverImage(QLabel):
                         
         except IndexError:
             return None
+        
+    def get_excluded_cells(self):
+        """Возвращает список (x_idx, y_idx) ячеек, которые пользователь отметил как исключённые."""
+        return self.click_history  # click_history уже возвращает копию
+    
+    def mouseMoveEvent(self, event):
+        """Показывает подсказку с индексами ячейки под курсором."""
+        if not self.__pixmap or not self._counts:
+            return
+        # Координаты курсора в исходном изображении
+        orig_x = int(event.pos().x() / self.scale_factor)
+        orig_y = int(event.pos().y() / self.scale_factor)
+        xs = self._counts.get('x', [])
+        ys = self._counts.get('y', [])
+        if len(xs) < 2 or len(ys) < 2:
+            return
+        # Индексы ячейки
+        col = bisect.bisect_right(xs, orig_x) - 1
+        row = bisect.bisect_right(ys, orig_y) - 1
+        if 0 <= col < len(xs) - 1 and 0 <= row < len(ys) - 1:
+            self.setToolTip(f"Col: {col}, Row: {row}")
+        else:
+            self.setToolTip("")
+        super().mouseMoveEvent(event)
+        
+    def leaveEvent(self, event):
+        self.setToolTip("")
+        super().leaveEvent(event)

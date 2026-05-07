@@ -1,4 +1,4 @@
-import h5py
+import h5py, os, hashlib
 from pathlib import Path
 import numpy as np
 
@@ -53,6 +53,32 @@ class H5LazyReader:
             raise IndexError(f"Index {index} out of range (0..{self.num_images-1})")
         return self._f[self._key][index]
 
+    def compute_hash(self) -> str:
+        """
+        Вычисляет идентификатор HDF5 файла на основе:
+        - размера файла,
+        - количества кадров,
+        - формы изображения,
+        - первых 4096 байт первого кадра.
+        Возвращает шестнадцатеричную строку MD5.
+        """
+        self._ensure_open()  # убедимся, что файл открыт
+    
+        size = os.path.getsize(self._path)
+        num_frames = self.num_images
+        h, w = self.image_shape
+        first_frame = self.get_image(0)
+        frame_bytes = first_frame.tobytes()
+        sample = frame_bytes[:4096]
+        
+        md5 = hashlib.md5()
+        md5.update(str(size).encode())
+        md5.update(str(num_frames).encode())
+        md5.update(str(h).encode())
+        md5.update(str(w).encode())
+        md5.update(sample)
+        return md5.hexdigest()
+    
     def close(self):
         if self._f is not None:
             self._f.close()
@@ -64,4 +90,6 @@ class H5LazyReader:
 
     def __exit__(self, *args):
         self.close()
+        
+    
 

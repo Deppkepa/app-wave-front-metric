@@ -27,7 +27,6 @@ build/
 # Compiled Dynamic libraries
 *.so
 *.dylib
-*.dll
 
 # Fortran module files
 *.mod
@@ -40,7 +39,6 @@ build/
 *.lib
 
 # Executables
-*.exe
 *.out
 *.app
 
@@ -60,7 +58,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+
 lib64/
 parts/
 sdist/
@@ -100,7 +98,6 @@ cover/
 # Translations
 *.mo
 *.pot
-tests.py
 launch.json
 tasks.json
 test_images.png

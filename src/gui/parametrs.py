@@ -10,12 +10,13 @@ class GridSettings(QWidget):
     Панель управления для настройки отображения изображения с сеткой.
     Содержит ползунок масштаба, кнопку сброса и (опционально) другие параметры.
     """
-    def __init__(self, scrollable_view, parent=None):
+    def __init__(self, scrollable_view, carousel=None, parent=None):
         """
         :param scrollable_view: экземпляр ScrollableImageView, который управляет масштабом
         """
         super().__init__(parent)
         self.scrollable = scrollable_view
+        self.carousel = carousel   # ссылка на ImageCarousel
 
         # Фиксируем ширину панели (как и было)
         self.setFixedWidth(250)
@@ -55,16 +56,47 @@ class GridSettings(QWidget):
         layout.addWidget(zoom_group)
         
         
-        # ---- НОВАЯ КНОПКА ----
-        self.save_btn = QPushButton("Сохранить для анализа")
-        self.save_btn.clicked.connect(self.saveRequested.emit)
-        layout.addWidget(self.save_btn)
+        # --- Кнопки действий ---
+        self.save_all_btn = QPushButton("Сохранить для всех кадров")
+        self.save_all_btn.setEnabled(False)   # станет активной после подготовки
+        self.save_all_btn.clicked.connect(self.on_save_all)
+        
+        self.save_current_btn = QPushButton("Сохранить для текущего кадра")
+        self.save_current_btn.setEnabled(False)
+        self.save_current_btn.clicked.connect(self.on_save_current)
+
+        self.start_analysis_btn = QPushButton("Произвести анализ")
+        self.start_analysis_btn.setEnabled(False)
+        self.start_analysis_btn.clicked.connect(self.on_start_analysis)
+        
+        self.reset_current_btn = QPushButton("Сбросить исключения (тек.)")
+        self.reset_current_btn.clicked.connect(self.on_reset_current)
+        self.reset_all_btn = QPushButton("Сбросить исключения (все)")
+        self.reset_all_btn.clicked.connect(self.on_reset_all)
+
+        layout.addWidget(self.save_all_btn)
+        layout.addWidget(self.save_current_btn)
+        layout.addWidget(self.start_analysis_btn)
+        layout.addWidget(self.reset_current_btn)
+        layout.addWidget(self.reset_all_btn)
         
         layout.addStretch()   # Прижимаем содержимое к верху
 
         # Если в будущем понадобятся другие параметры (цвет сетки, толщина линий и т.д.),
         # их можно добавить сюда.
 
+    def set_reset_enabled(self, enabled):
+        self.reset_current_btn.setEnabled(enabled)
+        self.reset_all_btn.setEnabled(enabled)
+
+    def on_reset_current(self):
+        if self.carousel:
+            self.carousel.reset_excluded_current()
+
+    def on_reset_all(self):
+        if self.carousel:
+            self.carousel.reset_excluded_all()
+    
     def on_zoom_slider_changed(self, value):
         """Обработчик изменения ползунка – устанавливаем масштаб в scrollable."""
         factor = value / 100.0
@@ -83,3 +115,28 @@ class GridSettings(QWidget):
         self.zoom_slider.setValue(percent)
         self.zoom_slider.blockSignals(False)
         self.zoom_label.setText(f"{percent}%")
+    
+    def set_save_all_enabled(self, enabled):
+        self.save_all_btn.setEnabled(enabled)
+        
+    def set_save_current_enabled(self, enabled):
+        self.save_current_btn.setEnabled(enabled)
+
+    def set_analysis_enabled(self, enabled):
+        self.start_analysis_btn.setEnabled(enabled)
+
+    def on_save_all(self):
+        if self.carousel:
+            self.carousel.save_all_frames()
+            # Разрешаем кнопку анализа
+            if hasattr(self.carousel, 'set_analysis_enabled'):
+                self.carousel.set_analysis_enabled(True)
+                self.start_analysis_btn.setEnabled(True)
+
+    def on_start_analysis(self):
+        if self.carousel:
+            self.carousel.start_analysis()
+    
+    def on_save_current(self):
+        if self.carousel:
+            self.carousel.save_current_frame()

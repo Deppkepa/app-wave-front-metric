@@ -11,6 +11,7 @@ class MenuBarHorizontal(QObject):
     signal_file_close = pyqtSignal()
     signal_file_exit = pyqtSignal()
     signal_edit_copy = pyqtSignal()
+    signal_about = pyqtSignal()
 
     def setup_menu(self, menubar):
 
@@ -25,9 +26,13 @@ class MenuBarHorizontal(QObject):
         self._create_action(file_menu, 'Закрыть файл', None, self.signal_file_close)
         self._create_action(file_menu, 'Выход', 'Ctrl+Q', self.signal_file_exit)
 
-        # --- Меню "Правка" ---
-        edit_menu = menubar.addMenu('Правка')
+        # --- Меню "Править" ---
+        edit_menu = menubar.addMenu('Править')
         self._create_action(edit_menu, 'Копировать', 'Ctrl+C', self.signal_edit_copy)
+        
+        # Меню "Справка"
+        help_menu = menubar.addMenu('Справка')
+        self._create_action(help_menu, 'О программе', None, self.signal_about)
 
 
     def _create_action(self, menu, text, shortcut, signal_to_emit):

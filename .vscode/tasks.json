@@ -1,28 +1,88 @@
 {
+    "version": "2.0.0",
     "tasks": [
         {
-            "type": "cppbuild",
-            "label": "C/C++: cl.exe сборка активного файла",
-            "command": "cl.exe",
+            "label": "build analyze.exe",
+            "type": "shell",
+            "command": "gcc",
             "args": [
-                "/Zi",
-                "/EHsc",
-                "/nologo",
-                "/Fe${fileDirname}\\${fileBasenameNoExtension}.exe",
-                "${file}"
+                "-c",
+                "src/logic/analyze/sqlite3.c",
+                "-o",
+                "sqlite3.o"
             ],
-            "options": {
-                "cwd": "${fileDirname}"
+            "group": "build",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "build cpp files",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-c",
+                "src/logic/analyze/analyze.cpp",
+                "-Ilib/opencv/OpenCV-MinGW-Build/include",
+                "-Ilib/cnpy",
+                "-o",
+                "analyze.o"
+            ],
+            "group": "build",
+            "problemMatcher": ["$gcc"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
             },
-            "problemMatcher": [
-                "$msCompile"
+            "dependsOn": ["build analyze.exe"]
+        },
+        {
+            "label": "build cnpy",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-c",
+                "lib/cnpy/cnpy.cpp",
+                "-Ilib/cnpy",
+                "-o",
+                "cnpy.o"
             ],
+            "group": "build",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "link all",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-o",
+                "analyze.exe",
+                "analyze.o",
+                "cnpy.o",
+                "sqlite3.o",
+                "-Llib/opencv/OpenCV-MinGW-Build/x64/mingw/lib",
+                "-l:libopencv_core455.dll.a",
+                "-l:libopencv_imgproc455.dll.a",
+                "-l:libopencv_imgcodecs455.dll.a",
+                "-lz"
+            ],
+            "group": "build",
+            "problemMatcher": ["$gcc"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "dependsOn": ["build cpp files", "build cnpy"]
+        },
+        {
+            "label": "build and run",
+            "type": "shell",
+            "command": "./analyze.exe",
+            "args": ["analysis_jobs/analysis.db"],
+            "dependsOn": ["link all"],
             "group": {
-                "kind": "build",
+                "kind": "test",
                 "isDefault": true
             },
-            "detail": "Задача создана отладчиком."
+            "problemMatcher": []
         }
-    ],
-    "version": "2.0.0"
+    ]
 }

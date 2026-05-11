@@ -8,9 +8,11 @@
 sript_test.py
 
 .vscode/
+.vscode/*
 analysis_jobs/
 test_sub.npy
-/vcpkg/
+.venv/
+build/
 
 # Compiled Object files
 *.slo

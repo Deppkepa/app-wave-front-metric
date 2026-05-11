@@ -1,41 +1,29 @@
 {
-    // 1. УКАЗЫВАЕМ ПУТЬ К ИНТЕРПРЕТАТОРУ (Самое важное!)
-    // Замените .venv на название вашей папки с виртуальным окружением
-    
-
-    // 2. НАСТРОЙКИ ДЛЯ UNITTEST
+    // --- Python настройки ---
+    "python.defaultInterpreterPath": ".venv/Scripts/python.exe",
+    "python.terminal.activateEnvironment": true,
     "python.testing.unittestEnabled": true,
     "python.testing.pytestEnabled": false,
-    "python.testing.pytestArgs": [
-        "tests"
-    ],
-    // "python.testing.unittestArgs": [
-    //     "-v",
-    //     "-s",
-    //     "./tests",
-    //     "-p",
-    //     "test_*.py"
-    // ],
     
+    // --- C++ настройки (только IntelliSense, не компиляция) ---
+    "C_Cpp.default.compilerPath": "C:/msys64/ucrt64/bin/gcc.exe",
+    "C_Cpp.default.intelliSenseMode": "gcc-x64",
+    "C_Cpp.default.cppStandard": "c++17",
+    
+    // --- Ассоциации типов файлов (чтобы .cpp не открывался как Python) ---
+    "files.associations": {
+        "*.cpp": "cpp",
+        "*.h": "cpp"
+    },
+    
+    // --- Прочее ---
     "cSpell.words": [
         "датасета",
+        "CNPY",
         "itemsize",
         "Pixmap",
         "qimg",
-        "tobytes"
-    ],
-    "python.testing.unittestArgs": [
-        "-v",
-        "-s",
-        "./tests",
-        "-p",
-        "test_*.py"
+        "tobytes",
+        "zernike"
     ]
-
-    // 3. НАСТРОЙКИ ДЛЯ COVERAGE (если используете встроенный или плагин)
-    // Это поможет плагину покрытия найти исходники
-    // "python.coverage.path": ".venv/Scripts/coverage",
-    
-    // 4. УБИРАЕМ настройки pytest, чтобы не было конфликтов
-    // "python.testing.pytestArgs": ["tests"] 
 }

@@ -15,6 +15,8 @@ from src.logic.subap_validator import SubapValidator
 from src.logic.storage import SubapStorage
 from src.logic.prepare_thread import PrepareThread
 
+from src.logic.analysis_thread import AnalysisThread
+
 class Manager:
     def __init__(self, cache_size=10):
         self._reader = None
@@ -30,6 +32,7 @@ class Manager:
         self._subaperture_rects = None   # список словарей с прямоугольниками и индексами
         # self._file_path = None
         self.validator = None
+        self.analysis_thread = None
 
     
     def open_file(self, file_path: str, progress_callback=None) -> int:
@@ -65,28 +68,66 @@ class Manager:
 
         # Не забываем сохранить размеры изображения
         self._image_height, self._image_width = self._reader.image_shape
-        # Сжимаем все кадры в JPEG и сохраняем в список
+        # Кэш сжатых JPEG
+        cache_dir = os.path.join(self._storage.base_dir, f"file_{file_id}", "jpg_cache")
+        if os.path.isdir(cache_dir) and len(os.listdir(cache_dir)) == self._total:
+            # Загружаем из кэша
+            self._compressed_images = []
+            for i in range(self._total):
+                with open(os.path.join(cache_dir, f"frame_{i}.jpg"), "rb") as f:
+                    data = f.read()
+                    self._compressed_images.append(QByteArray(data))
+            if progress_callback:
+                progress_callback(self._total, self._total)
+            return self._total
+
+        # Иначе сжимаем и сохраняем в кэш
+        os.makedirs(cache_dir, exist_ok=True)
         self._compressed_images = []
         for i in range(self._total):
-            if progress_callback and i % 10 == 0:  # не вызываем на каждом кадре, чтобы не перегружать
+            if progress_callback:
                 progress_callback(i + 1, self._total)
             img = self._reader.get_image(i)
-            # Приводим к 8-бит (если uint16 -> /256)
             if img.dtype == np.uint16:
                 img = (img / 256).astype(np.uint8)
             elif img.dtype != np.uint8:
                 img = img.astype(np.uint8)
 
-            # Конвертируем numpy в QImage
             h, w = img.shape
             qimg = QImage(img.data, w, h, w, QImage.Format_Grayscale8)
-            # Сжимаем в JPEG в QByteArray
             buffer = QBuffer()
             buffer.open(QBuffer.WriteOnly)
-            qimg.save(buffer, "JPEG", quality=85)   # качество 85
+            qimg.save(buffer, "JPEG", quality=85)
             compressed_data = buffer.data()
             buffer.close()
             self._compressed_images.append(compressed_data)
+
+            # Сохраняем в кэш
+            with open(os.path.join(cache_dir, f"frame_{i}.jpg"), "wb") as f:
+                f.write(compressed_data.data())
+        
+        # # Сжимаем все кадры в JPEG и сохраняем в список
+        # self._compressed_images = []
+        # for i in range(self._total):
+        #     if progress_callback and i % 10 == 0:  # не вызываем на каждом кадре, чтобы не перегружать
+        #         progress_callback(i + 1, self._total)
+        #     img = self._reader.get_image(i)
+        #     # Приводим к 8-бит (если uint16 -> /256)
+        #     if img.dtype == np.uint16:
+        #         img = (img / 256).astype(np.uint8)
+        #     elif img.dtype != np.uint8:
+        #         img = img.astype(np.uint8)
+
+        #     # Конвертируем numpy в QImage
+        #     h, w = img.shape
+        #     qimg = QImage(img.data, w, h, w, QImage.Format_Grayscale8)
+        #     # Сжимаем в JPEG в QByteArray
+        #     buffer = QBuffer()
+        #     buffer.open(QBuffer.WriteOnly)
+        #     qimg.save(buffer, "JPEG", quality=85)   # качество 85
+        #     compressed_data = buffer.data()
+        #     buffer.close()
+        #     self._compressed_images.append(compressed_data)
 
         # Закрываем читатель (данные уже все в памяти в сжатом виде)
         # self._reader.close()
@@ -327,3 +368,40 @@ class Manager:
 
     def _on_prepare_error(self, err):
         print(f"Ошибка при подготовке: {err}")
+
+    def run_analysis(self, method_name="zernike_polynomials"):
+            """Запускает C++ анализ после того, как подготовка завершена."""
+            print("DEBUG: run_analysis вызван, db_path =", self._storage.db_path, "file_id =", self._file_id)
+            if not hasattr(self, '_storage') or not self._storage.db_path:
+                raise RuntimeError("Хранилище не инициализировано")
+            self.analysis_thread = AnalysisThread(
+                self._storage.db_path, self._file_id, method_name
+            )
+            # Сигналы пробросим в App через сам Manager, либо Manager сам будет их emit'ить.
+            # Рекомендуется, чтобы Manager имел свои сигналы (но для простоты можно подключить в App).
+            # Пока реализуем через подключение в App, поэтому здесь просто сохраняем ссылку.
+            # Для этого изменим метод run_analysis, чтобы он возвращал поток, а App сама подключалась.
+            print("DEBUG: AnalysisThread создан, путь к exe будет:", __import__('os').path.join(__import__('os').getcwd(), "src", "logic", "analyze", "analyze.exe"))
+            return self.analysis_thread
+    
+    def get_excluded_cells_for_frame(self, frame_index: int) -> list:
+        """Возвращает список (col, row) исключённых ячеек для кадра из текущего файла."""
+        if not hasattr(self, '_storage') or not self._storage.db_path:
+            return []
+        return self._storage.get_excluded_cells_for_frame(self._file_id, frame_index)
+    
+    def has_excluded_cells(self) -> bool:
+        """Проверяет, сохранены ли исключённые ячейки для текущего файла."""
+        if not hasattr(self, '_storage') or not self._storage.db_path:
+            return False
+        return self._storage.has_excluded_cells_for_file(self._file_id)
+    
+    def get_default_excluded_cells(self, frame_index: int) -> list:
+        """Возвращает список (col, row) невалидных ячеек (is_valid=0) для указанного кадра."""
+        if not hasattr(self, '_storage') or not self._storage.db_path:
+            return []
+        return self._storage.get_invalid_cells(self._file_id, frame_index)
+
+    def reset_excluded_to_invalid(self):
+        """Сбрасывает флаг excluded для всех кадров файла: excluded=1 только для невалидных (is_valid=0)."""
+        self._storage.reset_excluded_to_invalid(self._file_id)

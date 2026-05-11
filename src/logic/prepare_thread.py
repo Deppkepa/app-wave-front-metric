@@ -53,12 +53,12 @@ class PrepareThread(QThread):
 
     def run(self):
         try:
+            self.output_dir = os.path.abspath(self.output_dir)
             num_cols = len(self.contours['x']) - 1
             num_rows = len(self.contours['y']) - 1
             for frame_idx in range(self.total):
                 if self._cancel:
                     break
-                # Пропускаем, если архив уже существует
                 if self.storage.is_frame_ready(self.file_id, frame_idx):
                     continue
 
@@ -67,7 +67,6 @@ class PrepareThread(QThread):
                     img = (img / 256).astype(np.uint8)
 
                 valid_set = self.validator.determine_valid_cells(img)
-                # Сохраняем битовую маску валидных ячеек
                 mask = np.zeros((num_rows, num_cols), dtype=bool)
                 for col, row in valid_set:
                     mask[row, col] = True
@@ -76,7 +75,7 @@ class PrepareThread(QThread):
                 if not valid_set:
                     continue
 
-                target = list(valid_set)  # все валидные (без учёта excluded)
+                target = sorted(valid_set, key=lambda cell: (cell[1], cell[0]))
                 sub_arrays, meta_data = self._prepare_frame_archive_data(img, target)
 
                 frame_id = self.storage.get_or_create_frame(
@@ -84,13 +83,15 @@ class PrepareThread(QThread):
                     self.image_width, self.image_height,
                     num_rows, num_cols
                 )
-
                 archive_path = os.path.join(self.output_dir, f"frame_{frame_idx}.npz")
+                archive_path = os.path.abspath(archive_path)
                 self.storage.save_frame_archive(frame_id, archive_path, sub_arrays, meta_data)
-                self.storage.update_cells_status(frame_id, valid_set, set())  # excluded пока пусто
+                self.storage.update_cells_status(frame_id, valid_set, set())
+                self.storage.exclude_invalid_cells(frame_id)
                 self.progress.emit(frame_idx + 1, self.total)
-                self.finished.emit()
 
+            # Единственный finished после обработки всех кадров
             self.finished.emit()
         except Exception as e:
             self.error.emit(str(e))
+    

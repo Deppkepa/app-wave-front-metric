@@ -42,6 +42,8 @@ build/
 *.out
 *.app
 
+cnpy/
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

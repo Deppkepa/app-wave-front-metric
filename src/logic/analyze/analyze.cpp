@@ -125,6 +125,10 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
+        sqlite3_busy_timeout(db, 120000);                 // ждать до 120 секунд при блокировке
+        sqlite3_exec(db, "PRAGMA journal_mode=WAL", nullptr, nullptr, nullptr);
+        sqlite3_exec(db, "PRAGMA synchronous=NORMAL", nullptr, nullptr, nullptr);
+
         int methodId;
         {
             sqlite3_stmt* stmt;

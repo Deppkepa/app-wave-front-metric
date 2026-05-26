@@ -397,7 +397,9 @@ class SubapStorage:
         """Создаёт папку и файл БД, таблицы и индексы. Вызывается один раз."""
         os.makedirs(self.base_dir, exist_ok=True)
         self.db_path = os.path.join(self.base_dir, "analysis.db")
-        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn = sqlite3.connect(self.db_path, timeout=120)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
         try:
             with conn:
                 conn.executescript(self._get_schema())
@@ -414,7 +416,8 @@ class SubapStorage:
             file_size INTEGER,
             last_modified TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP
+            updated_at TIMESTAMP,
+            prepared INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS frames (
@@ -491,10 +494,76 @@ class SubapStorage:
                 'Wavefront reconstruction via Zernike polynomials up to 4th order',
                 '{"max_order": 4, "normalization_radius": 1.0}');
         """
+    
+    def is_file_prepared(self, file_id: int) -> bool:
+        """Проверяет, помечен ли файл как полностью подготовленный."""
+        conn = self._connect()
+        try:
+            cur = conn.execute("SELECT prepared FROM files WHERE id=?", (file_id,))
+            row = cur.fetchone()
+            return row is not None and row[0] == 1
+        finally:
+            conn.close()
 
+    def mark_file_prepared(self, file_id: int):
+        """Устанавливает флаг prepared=1 для указанного файла."""
+        conn = self._connect()
+        try:
+            with conn:
+                conn.execute("UPDATE files SET prepared=1 WHERE id=?", (file_id,))
+        finally:
+            conn.close()
+    
+    def create_subapertures_for_frame(self, frame_id: int, contours: dict):
+        """
+        Создаёт записи для всех ячеек субапертур данного кадра.
+        Если запись уже существует (по уникальному ключу frame_id, grid_col, grid_row), она не будет перезаписана.
+        Новые записи имеют is_valid=0, excluded=0, file_path=NULL.
+        """
+        xs = contours['x']
+        ys = contours['y']
+        max_w = contours['max_width']
+        max_h = contours['max_height']
+        
+        # Собираем все строки для вставки
+        rows = []
+        for row_idx, y in enumerate(ys[:-1]):
+            for col_idx, x in enumerate(xs[:-1]):
+                w = xs[1] - x - 5 if col_idx == 0 else max_w
+                h = ys[1] - y - 5 if row_idx == 0 else max_h
+                rows.append((frame_id, col_idx, row_idx, x, y, w, h))
+        
+        if not rows:
+            return
+        conn = self._connect()
+        try:
+            with conn:
+                conn.executemany("""
+                    INSERT OR IGNORE INTO subapertures
+                    (frame_id, grid_col, grid_row, pos_x, pos_y, width, height, is_valid, excluded, file_path)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, NULL)
+                    """, rows)
+                # # Проходим по всем ячейкам сетки
+                # for row_idx, y in enumerate(ys[:-1]):
+                #     for col_idx, x in enumerate(xs[:-1]):
+                #         # Вычисляем ширину и высоту ячейки по тем же правилам, что и в prepare_thread
+                #         w = xs[1] - x - 5 if col_idx == 0 else max_w
+                #         h = ys[1] - y - 5 if row_idx == 0 else max_h
+                #         # Вставляем запись, игнорируя конфликт
+                #         conn.execute("""
+                #             INSERT OR IGNORE INTO subapertures
+                #             (frame_id, grid_col, grid_row, pos_x, pos_y, width, height, is_valid, excluded, file_path)
+                #             VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, NULL)
+                #         """, (frame_id, col_idx, row_idx, x, y, w, h))
+        finally:
+            conn.close()
+        
     def _connect(self):
         """Открывает новое соединение с БД (для внутреннего использования в методах)."""
-        return sqlite3.connect(self.db_path, timeout=10)
+        conn = sqlite3.connect(self.db_path, timeout=30)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        return conn
 
     # --- Существующие файл/фреймы ---
     def insert_file(self, path: str, file_hash: str, size: int, mtime: float) -> int:
@@ -604,22 +673,63 @@ class SubapStorage:
                  metadata=np.array(meta_data, dtype=np.int32))
         self.update_frame_archive_path(frame_id, archive_path)
 
-    def update_cells_status(self, frame_id: int, valid_set: set, excluded_set: set,
-                            file_paths: dict = None):
+    # def update_cells_status(self, frame_id: int, valid_set: set, excluded_set: set,
+    #                         file_paths: dict = None):
+    #     conn = self._connect()
+    #     try:
+    #         with conn:
+    #             for col, row in valid_set:
+    #                 conn.execute("UPDATE subapertures SET is_valid=1 WHERE frame_id=? AND grid_col=? AND grid_row=?",
+    #                              (frame_id, col, row))
+    #             conn.execute("UPDATE subapertures SET excluded=0 WHERE frame_id=? AND is_valid = 1", (frame_id,))
+    #             for col, row in excluded_set:
+    #                 conn.execute("UPDATE subapertures SET excluded=1 WHERE frame_id=? AND grid_col=? AND grid_row=?",
+    #                              (frame_id, col, row))
+    #             if file_paths:
+    #                 for (col, row), path in file_paths.items():
+    #                     conn.execute("UPDATE subapertures SET file_path=? WHERE frame_id=? AND grid_col=? AND grid_row=?",
+    #                                  (path, frame_id, col, row))
+    #     finally:
+    #         conn.close()
+    def update_cells_status(self, frame_id: int, valid_set: set, excluded_set: set, file_paths: dict = None):
         conn = self._connect()
         try:
             with conn:
-                for col, row in valid_set:
-                    conn.execute("UPDATE subapertures SET is_valid=1 WHERE frame_id=? AND grid_col=? AND grid_row=?",
-                                 (frame_id, col, row))
-                conn.execute("UPDATE subapertures SET excluded=0 WHERE frame_id=? AND is_valid = 1", (frame_id,))
-                for col, row in excluded_set:
-                    conn.execute("UPDATE subapertures SET excluded=1 WHERE frame_id=? AND grid_col=? AND grid_row=?",
-                                 (frame_id, col, row))
+                # 1. Массовая установка is_valid=1 для валидных ячеек
+                if valid_set:
+                    valid_rows = [(frame_id, col, row) for (col, row) in valid_set]
+                    conn.executemany("""
+                        UPDATE subapertures SET is_valid=1
+                        WHERE frame_id=? AND grid_col=? AND grid_row=?
+                    """, valid_rows)
+                
+                # 2. Сброс excluded для всех валидных ячеек (один запрос)
+                conn.execute("""
+                    UPDATE subapertures SET excluded=0
+                    WHERE frame_id=? AND is_valid=1
+                """, (frame_id,))
+                
+                # 3. Установка excluded=1 для выбранных ячеек (массово)
+                if excluded_set:
+                    excluded_rows = [(frame_id, col, row) for (col, row) in excluded_set]
+                    conn.executemany("""
+                        UPDATE subapertures SET excluded=1
+                        WHERE frame_id=? AND grid_col=? AND grid_row=?
+                    """, excluded_rows)
+                
+                # 4. Дополнительно: все невалидные (is_valid=0) помечаем excluded=1
+                conn.execute("""
+                    UPDATE subapertures SET excluded=1
+                    WHERE frame_id=? AND is_valid=0 AND excluded=0
+                """, (frame_id,))
+                
+                # 5. Обновление file_path (если нужно)
                 if file_paths:
-                    for (col, row), path in file_paths.items():
-                        conn.execute("UPDATE subapertures SET file_path=? WHERE frame_id=? AND grid_col=? AND grid_row=?",
-                                     (path, frame_id, col, row))
+                    path_rows = [(path, frame_id, col, row) for (col, row), path in file_paths.items()]
+                    conn.executemany("""
+                        UPDATE subapertures SET file_path=?
+                        WHERE frame_id=? AND grid_col=? AND grid_row=?
+                    """, path_rows)
         finally:
             conn.close()
 
@@ -642,7 +752,27 @@ class SubapStorage:
                         (file_id, *params))
         finally:
             conn.close()
-
+            
+    # def is_file_prepared(self, file_id: int, total_frames: int) -> bool:
+    #     """
+    #     Проверяет, что для данного файла все кадры полностью подготовлены:
+    #     - в таблице frames есть ровно total_frames записей,
+    #     - у каждого кадра указан archive_path и файл существует.
+    #     """
+    #     conn = self._connect()
+    #     try:
+    #         cur = conn.execute("SELECT COUNT(*) FROM frames WHERE file_id = ?", (file_id,))
+    #         count = cur.fetchone()[0]
+    #         if count != total_frames:
+    #             return False
+    #         cur = conn.execute("SELECT id, archive_path FROM frames WHERE file_id = ?", (file_id,))
+    #         for frame_id, arch_path in cur:
+    #             if not arch_path or not os.path.exists(arch_path):
+    #                 return False
+    #         return True
+    #     finally:
+    #         conn.close()
+            
     # --- Методы для анализа ---
     def get_method_id(self, method_name: str) -> int:
         conn = self._connect()

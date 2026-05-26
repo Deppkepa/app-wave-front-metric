@@ -77,6 +77,7 @@ class AppWFMetric(QMainWindow):
         self.progress_bar.setFixedWidth(150)
         self.progress_bar.setTextVisible(True)
         self.statusBar().addPermanentWidget(self.progress_bar)
+        self._prepare_infinite_mode = False
 
     def center_window(self):
         screen_geometry = QApplication.primaryScreen().availableGeometry()
@@ -173,12 +174,31 @@ class AppWFMetric(QMainWindow):
 
         target_layout.addWidget(carousel, stretch=1)
         target_layout.addWidget(settings_widget, stretch=0)
-
-        manager.run_background_init()
-        self._prepare_timer = QTimer()
-        self._prepare_timer.setInterval(50)
-        self._prepare_timer.timeout.connect(lambda: self._check_prepare_thread(manager, carousel))
-        self._prepare_timer.start(100)
+        # Запускаем подготовку (или получаем ответ, что она не нужна)
+        preparation_started = self._manager.prepare_all_subapertures()
+        
+        if preparation_started:
+            # Подготовка запущена – запускаем таймер для отслеживания потока
+            self._prepare_timer = QTimer()
+            self._prepare_timer.setInterval(50)
+            self._prepare_timer.timeout.connect(lambda: self._check_prepare_thread(manager, carousel))
+            self._prepare_timer.start(100)
+        else:
+        # self._manager.prepare_all_subapertures()   # запускаем подготовку
+        # manager.run_background_init()
+        # self._prepare_timer = QTimer()
+        # self._prepare_timer.setInterval(50)
+        # self._prepare_timer.timeout.connect(lambda: self._check_prepare_thread(manager, carousel))
+        # self._prepare_timer.start(100)
+            carousel.set_analysis_ready(True)
+            self.settings_widget.set_save_all_enabled(True)
+            self.settings_widget.set_save_current_enabled(True)
+            if manager.has_excluded_cells():
+                carousel.set_analysis_enabled(True)
+                self.settings_widget.set_analysis_enabled(True)
+            self.report_widget.invalidate_cache()
+            self._set_busy_state(False)   # разблокируем кнопки
+            # self.check_analysis_status()   # обновим отчёт, если анализ уже был
 
         QTimer.singleShot(500, self.check_analysis_status)
 
@@ -220,23 +240,50 @@ class AppWFMetric(QMainWindow):
             self._manager.cancel_prepare()
         event.accept()
 
+
     def _check_prepare_thread(self, manager, carousel):
         if hasattr(manager, 'prepare_thread') and manager.prepare_thread is not None:
             self._prepare_timer.stop()
             pt = manager.prepare_thread
+            
+            # Если поток уже завершён (например, все кадры были готовы)
+            if pt.isFinished():
+                self._on_prepare_finished_with_carousel(carousel)
+                return
+            
+            # --- Включаем бесконечный режим до первого прогресса ---
+            self._prepare_infinite_mode = True
+            self.progress_bar.setRange(0, 0)      # бесконечный режим (пульсирующая полоса)
+            self.progress_bar.setVisible(True)
+            self.statusBar().showMessage("Проверка данных...", 0)
+            
+            # Подключаем сигналы (предварительно отключаем старые, чтобы не было дублей)
+            try:
+                pt.progress.disconnect()
+            except TypeError:
+                pass
             pt.progress.connect(self._on_prepare_progress)
             pt.finished.connect(lambda: self._on_prepare_finished_with_carousel(carousel))
             pt.error.connect(self._on_prepare_error)
-            if pt.isFinished():
-                self._on_prepare_finished_with_carousel(carousel)
-            else:
-                total = pt.total
-                self.progress_bar.setRange(0, total)
-                self.progress_bar.setValue(0)
-                self.progress_bar.setVisible(True)
-                self.statusBar().showMessage("Подготовка субапертур...", 0)
+        
+    # def _check_prepare_thread(self, manager, carousel):
+    #     if hasattr(manager, 'prepare_thread') and manager.prepare_thread is not None:
+    #         self._prepare_timer.stop()
+    #         pt = manager.prepare_thread
+    #         pt.progress.connect(self._on_prepare_progress)
+    #         pt.finished.connect(lambda: self._on_prepare_finished_with_carousel(carousel))
+    #         pt.error.connect(self._on_prepare_error)
+    #         if pt.isFinished():
+    #             self._on_prepare_finished_with_carousel(carousel)
+    #         else:
+    #             total = pt.total
+    #             self.progress_bar.setRange(0, total)
+    #             self.progress_bar.setValue(0)
+    #             self.progress_bar.setVisible(True)
+    #             self.statusBar().showMessage("Подготовка субапертур...", 0)
 
     def _on_prepare_finished_with_carousel(self, carousel):
+        self._prepare_infinite_mode = False
         print("Подготовка всех субапертур завершена")
         self.progress_bar.setVisible(False)
         self.statusBar().showMessage("Подготовка завершена", 2000)
@@ -248,10 +295,20 @@ class AppWFMetric(QMainWindow):
             self.settings_widget.set_analysis_enabled(True)
         # Заставляем отчёт перечитать данные после возможного изменения исключений
         self.report_widget.invalidate_cache()
+        self._set_busy_state(False)
 
     def _on_prepare_progress(self, current, total):
+        # Если до этого был бесконечный режим — переключаем в обычный
+        if self._prepare_infinite_mode:
+            self._prepare_infinite_mode = False
+            self.progress_bar.setRange(0, total)   # теперь знаем общее количество
+            # self.progress_bar.setFormat("%v / %m")  # показываем текущее/общее (можно опционально)
+            self.progress_bar.setFormat("%p%")   # показывает проценты
+        
         self.progress_bar.setValue(current)
         self.statusBar().showMessage(f"Подготовка: {current}/{total}", 0)
+        # self.progress_bar.setValue(current)
+        # self.statusBar().showMessage(f"Подготовка: {current}/{total}", 0)
 
     def _on_prepare_finished(self):
         pass
@@ -268,19 +325,23 @@ class AppWFMetric(QMainWindow):
         try:
             analysis_thread = self._manager.run_analysis()
             if analysis_thread:
+                self.progress_bar.setRange(0, 0)
+                self.progress_bar.setVisible(True)
+                self.statusBar().showMessage("Начат анализ...")
                 analysis_thread.progress.connect(self._on_analysis_progress)
                 analysis_thread.finished.connect(self._on_analysis_finished)
                 analysis_thread.error.connect(self._on_analysis_error)
                 analysis_thread.start()
-                self.progress_bar.setRange(0, 0)
-                self.progress_bar.setVisible(True)
-                self.statusBar().showMessage("Начат анализ...")
+                
         except Exception as e:
             self._set_busy_state(False)
             QMessageBox.critical(self, "Ошибка", f"Не удалось запустить анализ: {e}")
 
     def _on_analysis_progress(self, current, total):
-        self.progress_bar.setRange(0, total)
+        # Если прогресс-бар находится в режиме "бегающего пятна" (максимум 0),
+        # переключаем его в нормальный режим с известным total.
+        if self.progress_bar.maximum() == 0:
+            self.progress_bar.setRange(0, total)
         self.progress_bar.setValue(current)
         self.statusBar().showMessage(f"Анализ: {current}/{total}", 0)
 
@@ -298,6 +359,7 @@ class AppWFMetric(QMainWindow):
         QMessageBox.critical(self, "Ошибка анализа", err_msg)
 
     def _on_prepare_error(self, err):
+        self._prepare_infinite_mode = False
         self.progress_bar.setVisible(False)
         self.statusBar().showMessage("Ошибка подготовки", 3000)
         QMessageBox.critical(self, "Ошибка подготовки", err)

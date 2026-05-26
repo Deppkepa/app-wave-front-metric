@@ -374,3 +374,5 @@ class AnalysisReportWidget(QWidget):
             return R * np.cos(m * theta)
         else:
             return R * np.sin(m_abs * theta)
+        
+    

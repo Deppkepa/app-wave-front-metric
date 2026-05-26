@@ -69,65 +69,44 @@ class Manager:
         # Не забываем сохранить размеры изображения
         self._image_height, self._image_width = self._reader.image_shape
         # Кэш сжатых JPEG
-        cache_dir = os.path.join(self._storage.base_dir, f"file_{file_id}", "jpg_cache")
-        if os.path.isdir(cache_dir) and len(os.listdir(cache_dir)) == self._total:
-            # Загружаем из кэша
-            self._compressed_images = []
-            for i in range(self._total):
-                with open(os.path.join(cache_dir, f"frame_{i}.jpg"), "rb") as f:
-                    data = f.read()
-                    self._compressed_images.append(QByteArray(data))
-            if progress_callback:
-                progress_callback(self._total, self._total)
-            return self._total
+        # cache_dir = os.path.join(self._storage.base_dir, f"file_{file_id}", "jpg_cache")
+        # if os.path.isdir(cache_dir) and len(os.listdir(cache_dir)) == self._total:
+        #     # Загружаем из кэша
+        #     self._compressed_images = []
+        #     for i in range(self._total):
+        #         with open(os.path.join(cache_dir, f"frame_{i}.jpg"), "rb") as f:
+        #             data = f.read()
+        #             self._compressed_images.append(QByteArray(data))
+        #     if progress_callback:
+        #         progress_callback(self._total, self._total)
+        #     return self._total
 
-        # Иначе сжимаем и сохраняем в кэш
-        os.makedirs(cache_dir, exist_ok=True)
-        self._compressed_images = []
-        for i in range(self._total):
-            if progress_callback:
-                progress_callback(i + 1, self._total)
-            img = self._reader.get_image(i)
-            if img.dtype == np.uint16:
-                img = (img / 256).astype(np.uint8)
-            elif img.dtype != np.uint8:
-                img = img.astype(np.uint8)
-
-            h, w = img.shape
-            qimg = QImage(img.data, w, h, w, QImage.Format_Grayscale8)
-            buffer = QBuffer()
-            buffer.open(QBuffer.WriteOnly)
-            qimg.save(buffer, "JPEG", quality=85)
-            compressed_data = buffer.data()
-            buffer.close()
-            self._compressed_images.append(compressed_data)
-
-            # Сохраняем в кэш
-            with open(os.path.join(cache_dir, f"frame_{i}.jpg"), "wb") as f:
-                f.write(compressed_data.data())
-        
-        # # Сжимаем все кадры в JPEG и сохраняем в список
+        # # Иначе сжимаем и сохраняем в кэш
+        # os.makedirs(cache_dir, exist_ok=True)
         # self._compressed_images = []
         # for i in range(self._total):
-        #     if progress_callback and i % 10 == 0:  # не вызываем на каждом кадре, чтобы не перегружать
+        #     if progress_callback:
         #         progress_callback(i + 1, self._total)
         #     img = self._reader.get_image(i)
-        #     # Приводим к 8-бит (если uint16 -> /256)
         #     if img.dtype == np.uint16:
         #         img = (img / 256).astype(np.uint8)
         #     elif img.dtype != np.uint8:
         #         img = img.astype(np.uint8)
 
-        #     # Конвертируем numpy в QImage
         #     h, w = img.shape
         #     qimg = QImage(img.data, w, h, w, QImage.Format_Grayscale8)
-        #     # Сжимаем в JPEG в QByteArray
-        #     buffer = QBuffer()
-        #     buffer.open(QBuffer.WriteOnly)
-        #     qimg.save(buffer, "JPEG", quality=85)   # качество 85
-        #     compressed_data = buffer.data()
-        #     buffer.close()
-        #     self._compressed_images.append(compressed_data)
+            # buffer = QBuffer()
+            # buffer.open(QBuffer.WriteOnly)
+            # qimg.save(buffer, "JPEG", quality=85)
+            # compressed_data = buffer.data()
+            # buffer.close()
+            # self._compressed_images.append(compressed_data)
+
+            # Сохраняем в кэш
+            # with open(os.path.join(cache_dir, f"frame_{i}.jpg"), "wb") as f:
+            #     f.write(compressed_data.data())
+        
+        
 
         # Закрываем читатель (данные уже все в памяти в сжатом виде)
         # self._reader.close()
@@ -142,21 +121,32 @@ class Manager:
         # Проверяем кэш
         with QMutexLocker(self._cache_mutex):
             if index in self._cache:
-                self._cache.move_to_end(index)
                 return self._cache[index]
+                # self._cache.move_to_end(index)
+                # return self._cache[index]
+        # Лениво читаем кадр из HDF5
+        img = self._reader.get_image(index)
+        if img.dtype == np.uint16:
+            img = (img / 256).astype(np.uint8)
+        elif img.dtype != np.uint8:
+            img = img.astype(np.uint8)
 
-        # Нет в кэше: декодируем JPEG
-        compressed = self._compressed_images[index]
-        pixmap = QPixmap()
-        if not pixmap.loadFromData(compressed, "JPEG"):
-            raise RuntimeError(f"Failed to decode JPEG for index {index}")
+        h, w = img.shape
+        qimg = QImage(img.data, w, h, w, QImage.Format_Grayscale8)
+        pix = QPixmap.fromImage(qimg)
+
+        # # Нет в кэше: декодируем JPEG
+        # compressed = self._compressed_images[index]
+        # pixmap = QPixmap()
+        # if not pixmap.loadFromData(compressed, "JPEG"):
+        #     raise RuntimeError(f"Failed to decode JPEG for index {index}")
 
         # Помещаем в кэш
         with QMutexLocker(self._cache_mutex):
-            self._cache[index] = pixmap
+            self._cache[index] = pix
             if len(self._cache) > self._cache_size:
                 self._cache.popitem(last=False)
-        return pixmap
+        return pix
 
     def get_image_and_contours(self, index: int) -> Tuple[QPixmap, dict]:
         """Возвращает (QPixmap, contours) для индекса."""
@@ -217,7 +207,8 @@ class Manager:
         self.prepare_all_subapertures()
         
     def cancel_prepare(self):
-        if hasattr(self, 'prepare_thread') and self.prepare_thread.isRunning():
+        # if hasattr(self, 'prepare_thread') and self.prepare_thread.isRunning():
+        if self.prepare_thread is not None and self.prepare_thread.isRunning():
             self.prepare_thread.cancel()
             self.prepare_thread.wait()
 
@@ -336,10 +327,17 @@ class Manager:
     # FIXME: сделать функцию которая будет определять формат файла и вызывать функцию
     
     def prepare_all_subapertures(self):
-        """Запускает подготовку всех субапертур (однократную нарезку)."""
+        """Запускает подготовку всех субапертур (однократную нарезку).
+        Возвращает True, если подготовка запущена (создан поток), иначе False."""
         if not hasattr(self, '_npy_dir'):
             self._npy_dir = os.path.join(self._storage.base_dir, f"file_{self._file_id}")
             os.makedirs(self._npy_dir, exist_ok=True)
+        
+        # Быстрая проверка по флагу в БД
+        if self._storage.is_file_prepared(self._file_id):
+            print("Файл уже полностью подготовлен, подготовка не требуется.")
+            print("Файл уже полностью подготовлен, подготовка не требуется.")
+            return False   # <-- подготовка не запущена
         
         self.prepare_thread = PrepareThread(
             reader=self._reader,
@@ -356,6 +354,7 @@ class Manager:
         self.prepare_thread.finished.connect(self._on_prepare_finished)
         self.prepare_thread.error.connect(self._on_prepare_error)
         self.prepare_thread.start()
+        return True
 
     def _on_prepare_progress(self, current, total):
         print(f"Подготовка: {current}/{total}")  # можно передавать сигнал в GUI
@@ -363,7 +362,7 @@ class Manager:
     def _on_prepare_finished(self):
         if self.prepare_thread is not None and self.prepare_thread.isFinished():
             self._cached_valid_masks = self.prepare_thread.valid_masks   # сохраняем маски
-
+        self._storage.mark_file_prepared(self._file_id)
         print("Подготовка всех субапертур завершена")
 
     def _on_prepare_error(self, err):
@@ -376,12 +375,13 @@ class Manager:
                 raise RuntimeError("Хранилище не инициализировано")
             self.analysis_thread = AnalysisThread(
                 self._storage.db_path, self._file_id, method_name
+                # self._storage.db_path, self._file_id, method_name
             )
             # Сигналы пробросим в App через сам Manager, либо Manager сам будет их emit'ить.
             # Рекомендуется, чтобы Manager имел свои сигналы (но для простоты можно подключить в App).
             # Пока реализуем через подключение в App, поэтому здесь просто сохраняем ссылку.
             # Для этого изменим метод run_analysis, чтобы он возвращал поток, а App сама подключалась.
-            print("DEBUG: AnalysisThread создан, путь к exe будет:", __import__('os').path.join(__import__('os').getcwd(), "src", "logic", "analyze", "analyze.exe"))
+            print("DEBUG: AnalysisThread (многопроцессный) создан")
             return self.analysis_thread
     
     def get_excluded_cells_for_frame(self, frame_index: int) -> list:
